@@ -1,5 +1,15 @@
 import { enums } from './library/enums.min.js';
+import { framework } from './library/framework.min.js';
+
+import { chainers } from './library/chainers.min.js';
 import { wrappers } from './library/wrappers.min.js';
+
+const API = enums(framework);
+
+const item = {
+   chainer: chainers.item(framework, API),
+   wrapper: wrappers.item(framework, API)
+};
 
 export function $ (object, ...args) {
    if (object !== null) {
@@ -11,7 +21,7 @@ export function $ (object, ...args) {
             } else if (instance instanceof Java.type('org.bukkit.entity.Entity')) {
                //return wrappers.entity(core.access(instance));
             } else if (instance instanceof Java.type('org.bukkit.inventory.ItemStack')) {
-               return wrappers.item(core.access(instance));
+               return item.chainer(item.wrapper(core.access(instance)));
             } else if (instance instanceof Java.type('org.bukkit.inventory.Inventory')) {
                //return wrappers.inventory(core.access(instance));
             } else if (instance instanceof Java.type('org.bukkit.Location')) {
@@ -24,4 +34,4 @@ export function $ (object, ...args) {
    }
 }
 
-core.export(Object.assign($, { enums: enums }));
+core.export(Object.assign($, { wrappers: wrappers, chainers: chainers }));

@@ -1,4 +1,4 @@
-export function item (_, enums) {
+export function item (_, API) {
    const util = {
       adventure: (instance, meta, type) => {
          const keys = () => core.array(meta[`${type}ableKeys`]);
@@ -7,11 +7,11 @@ export function item (_, enums) {
                return keys().map((key) => key.getKey());
             },
             add: (name) => {
-               meta[`${type}ableKeys`] = _.collect(...keys(), enums.material[name].getKey());
+               meta[`${type}ableKeys`] = _.collect(...keys(), API.material[name].getKey());
                instance.itemMeta = meta.instance;
             },
             remove: (name) => {
-               meta[`${type}ableKeys`] = _.collect(...keys().filter((key) => `${key}` !== `${enums.material[name]}`));
+               meta[`${type}ableKeys`] = _.collect(...keys().filter((key) => `${key}` !== `${API.material[name]}`));
                instance.itemMeta = meta.instance;
             },
             clear: () => {
@@ -23,18 +23,18 @@ export function item (_, enums) {
       flags: (instance, meta) => {
          return _.mirror({
             get array () {
-               return core.array(meta.itemFlags).map((flag) => _.key(enums.itemFlag, flag));
+               return core.array(meta.itemFlags).map((flag) => _.key(API.itemFlag, flag));
             },
             add: (flag) => {
-               meta.addItemFlags(enums.itemFlag[flag]);
+               meta.addItemFlags(API.itemFlag[flag]);
                instance.itemMeta = meta.instance;
             },
             remove: (flag) => {
-               meta.removeItemFlags(enums.itemFlag[flag]);
+               meta.removeItemFlags(API.itemFlag[flag]);
                instance.itemMeta = meta.instance;
             },
             clear: () => {
-               meta.removeItemFlags(..._.values(enums.itemFlag));
+               meta.removeItemFlags(..._.values(API.itemFlag));
                instance.itemMeta = meta.instance;
             }
          });
@@ -45,15 +45,15 @@ export function item (_, enums) {
                _.uuid(data.uuid),
                '',
                data.amount,
-               enums.amOperation[data.operation],
-               enums.equipmentSlot[data.slot] || null
+               API.amOperation[data.operation],
+               API.equipmentSlot[data.slot] || null
             );
          },
          serialize: (data) => {
             return {
                amount: data.amount,
-               operation: _.key(enums.amOperation, data.operation),
-               slot: data.slot ? _.key(enums.equipmentSlot, data.slot) : null,
+               operation: _.key(API.amOperation, data.operation),
+               slot: data.slot ? _.key(API.equipmentSlot, data.slot) : null,
                uuid: `${data.uniqueId}`
             };
          }
@@ -142,11 +142,11 @@ export function item (_, enums) {
          get attributes () {
             const meta = instance.itemMeta;
             if (meta) {
-               return _.define(enums.attribute, (entry) => {
+               return _.define(API.attribute, (entry) => {
                   return _.mirror({
                      get array () {
                         const modifiers = meta.hasAttributeModifiers() && meta.getAttributeModifiers(entry.value);
-                        return [ ...(modifiers || []) ].map((modifier) => {
+                        return [ ...core.array(modifiers || []) ].map((modifier) => {
                            return util.modifier.serialize(modifier);
                         });
                      },
@@ -169,7 +169,20 @@ export function item (_, enums) {
          set attributes (value) {
             const meta = instance.itemMeta;
             if (meta) {
-               _.keys(enums.attribute).forEach((key) => (item.attributes[key] = value[key] || []));
+               _.keys(API.attribute).forEach((key) => (item.attributes[key] = value[key] || []));
+            }
+         },
+         get damage () {
+            const meta = instance.itemMeta;
+            if (meta) {
+               return meta.damage;
+            }
+         },
+         set damage (value) {
+            const meta = instance.itemMeta;
+            if (meta) {
+               meta.damage = value;
+               instance.itemMeta = meta.instance;
             }
          },
          get data () {
@@ -216,7 +229,7 @@ export function item (_, enums) {
          get enchantments () {
             const meta = instance.itemMeta;
             if (meta) {
-               return _.define(enums.enchantment, (entry) => {
+               return _.define(API.enchantment, (entry) => {
                   return {
                      get: () => {
                         if (item.material === 'enchanted_book') return meta.getStoredEnchantLevel(entry.value);
@@ -240,7 +253,7 @@ export function item (_, enums) {
          set enchantments (value) {
             const meta = instance.itemMeta;
             if (meta) {
-               _.keys(enums.enchantment).forEach((key) => (item.enchantments[key] = value[key] || 0));
+               _.keys(API.enchantment).forEach((key) => (item.enchantments[key] = value[key] || 0));
             }
          },
          get flags () {
@@ -269,10 +282,10 @@ export function item (_, enums) {
             }
          },
          get material () {
-            return _.key(enums.material, instance.type.instance);
+            return _.key(API.material, instance.type.instance);
          },
          set material (value) {
-            instance.type = enums.material[value];
+            instance.type = API.material[value];
          },
          get name () {
             const meta = instance.itemMeta;

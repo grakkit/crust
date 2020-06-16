@@ -1,4 +1,4 @@
-const framework = {
+export const framework = {
    base: {
       characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=',
       encode: (string) => {
@@ -240,5 +240,3 @@ const framework = {
       return Object.values(object);
    }
 };
-
-export const _ = framework;
