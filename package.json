@@ -1,3 +1,6 @@
 {
-   "main": "./index.min.js"
+   "main": "./index.min.js",
+   "require": [
+      "grakkit/framework"
+   ]
 }
