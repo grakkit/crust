@@ -1,4 +1,4 @@
-import { framework } from './framework.min.js';
+const framework = core.import('grakkit/framework');
 
 const API = framework.object(
    framework.entries({
