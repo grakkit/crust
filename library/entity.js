@@ -16,6 +16,9 @@ export function wrapper (_, API) {
          generic_flying_speed: [ 0, 1024 ],
          zombie_spawn_reinforcements: [ 0, 1 ]
       },
+      color: (text) => {
+         return text.replace(/(&)/g, '§').replace(/(§§)/g, '&');
+      },
       equipment: {
          chest: 'chestplate',
          feet: 'boots',
@@ -192,6 +195,24 @@ export function wrapper (_, API) {
          set tags (value) {
             util.tags(instance).set(value);
          },
+         text: (message, type, raw) => {
+            if (player) {
+               typeof type === 'boolean' && (raw = type);
+               raw || (message = util.color(message));
+               switch (type) {
+                  case 'action':
+                     const action = Java.type('net.md_5.bungee.api.ChatMessageType').ACTION_BAR;
+                     const component = Java.type('net.md_5.bungee.api.chat.TextComponent');
+                     instance.sendMessage(action, new component(message));
+                     break;
+                  case 'title':
+                     break;
+                  default:
+                     instance.sendMessage(message);
+                     break;
+               }
+            }
+         },
          get uuid () {
             return instance.getUniqueId().toString();
          },
@@ -313,6 +334,10 @@ export function chainer (_, API) {
                return that;
             }
          },
+         text: (...args) => {
+            entities.map((entity) => entity.text(...args));
+            return that;
+         },
          uuid: () => {
             return entities.map((entity) => entity.uuid);
          },
@@ -340,6 +365,7 @@ export const links = [
    'name',
    'passenger',
    'tag',
+   'text',
    'uuid',
    'vitality'
 ];
