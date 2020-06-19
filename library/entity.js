@@ -1,5 +1,6 @@
 export function wrapper (_, API) {
    const util = {
+      attributable: Java.type('org.bukkit.attribute.Attributable'),
       attribute: {
          generic_max_health: [ 0, 1024 ],
          generic_follow_range: [ 0, 2048 ],
@@ -26,13 +27,13 @@ export function wrapper (_, API) {
       passengers: (instance) => {
          return _.mirror({
             get array () {
-               return core.array(instance.passengers);
+               return _.array(instance.getPassengers());
             },
             add: (value) => {
-               instance.addPassenger(value.instance || value);
+               instance.addPassenger((value && value.one) || value);
             },
             delete: (value) => {
-               instance.removePassenger(value.instance || value);
+               instance.removePassenger((value && value.one) || value);
             },
             clear: () => {
                instance.eject();
@@ -42,92 +43,142 @@ export function wrapper (_, API) {
       tags: (instance) => {
          return _.mirror({
             get array () {
-               return instance.scoreboardTags;
+               return _.array(instance.getScoreboardTags());
             },
             add: (value) => {
-               instance.scoreboardTags.add(value);
+               instance.getScoreboardTags().add(value);
             },
             remove: (value) => {
-               instance.scoreboardTags.remove(value);
+               instance.getScoreboardTags().remove(value);
             },
             clear: () => {
-               instance.scoreboardTags.clear();
+               instance.getScoreboardTags().clear();
             }
          });
       }
    };
    return (instance) => {
+      const alive = instance instanceof Java.type('org.bukkit.entity.LivingEntity');
+      const attributable = instance instanceof Java.type('org.bukkit.attribute.Attributable');
+      const player = instance instanceof Java.type('org.bukkit.entity.Player');
       const entity = {
-         instance: instance,
          get attributes () {
             return _.define(API.attribute, (entry) => {
-               const attribute = instance.getAttribute(entry.value);
-               if (attribute) {
-                  return {
-                     get: () => {
-                        return attribute.baseValue;
-                     },
-                     set: (value) => {
-                        attribute.baseValue = _.clamp(value || attribute.defaultValue, ...util.attribute[entry.key]);
-                     }
-                  };
+               if (attributable) {
+                  const attribute = instance.getAttribute(entry.value);
+                  if (attribute) {
+                     return {
+                        get: () => {
+                           return attribute.getBaseValue();
+                        },
+                        set: (value) => {
+                           value || (value = attribute.getDefaultValue());
+                           attribute.setBaseValue(_.clamp(value, ...util.attribute[entry.key]));
+                        }
+                     };
+                  }
                }
             });
          },
          set attributes (value) {
-            _.keys(API.attribute).forEach((key) => {
-               entity.attributes[key] = value[key] || entity.getAttribute(API.attribute[key]).defaultValue;
-            });
+            _.keys(API.attribute).forEach((key) => (entity.attributes[key] = value[key]));
          },
          get effects () {
-            return _.define(API.potionEffectType, (entry) => {
+            return _.define(API.peType, (entry) => {
                return {
                   get: () => {
-                     const effect = instance.getPotionEffect(entry.value);
-                     if (effect) return { amplifier: effect.amplifier, duration: effect.duration };
+                     if (alive) {
+                        const effect = instance.getPotionEffect(entry.value);
+                        if (effect) return { duration: effect.getDuration(), amplifier: effect.getAmplifier() + 1 };
+                     }
                   },
                   set: (value) => {
-                     if (value.amplifier > 0 && value.duration > 0) {
-                        instance.addPotionEffect(entry.value.createEffect(value.duration, value.amplifier), true);
-                     } else {
-                        instance.removePotionEffect(entry.value);
+                     if (alive) {
+                        value || (value = {});
+                        const duration = _.clamp(value.duration || 0, 0, 2147483647);
+                        const amplifier = _.clamp(value.amplifier || 0, 0, 255);
+                        if (duration > 0 && amplifier > 0) {
+                           instance.addPotionEffect(entry.value.createEffect(duration, amplifier - 1), true);
+                        } else {
+                           instance.removePotionEffect(entry.value);
+                        }
                      }
                   }
                };
             });
          },
          set effects (value) {
-            _.keys(API.potionEffectType).forEach((key) => (entity.effects[key] = value[key] || {}));
+            _.keys(API.peType).forEach((key) => (entity.effects[key] = value[key]));
          },
          get equipment () {
             return _.define(API.equipmentSlot, (entry) => {
                const slot = util.equipment[entry.key];
+               const pascal = _.pascal(slot);
                return {
                   get: () => {
-                     return instance.equipment[slot];
+                     if (alive) {
+                        return instance.getEquipment()[`get${pascal}`]();
+                     }
                   },
                   set: (value) => {
-                     instance.equipment[slot] = value;
+                     if (alive) {
+                        value || (value = null);
+                        instance.getEquipment()[`set${pascal}`]((value && value.one) || value);
+                     }
                   }
                };
             });
          },
          set equipment (value) {
-            core.keys(API.equipmentSlot).forEach((key) => {
-               instance.equipment[util.equipment[key]] = value[key] || null;
-            });
+            _.keys(API.equipmentSlot).forEach((key) => (instance.equipment[util.equipment[key]] = value[key]));
          },
          get health () {
-            return instance.health;
+            if (alive) {
+               return instance.getHealth();
+            }
          },
          set health (value) {
-            instance.health = _.clamp(value, 0, instance.maxHealth);
+            if (alive) {
+               instance.setHealth(_.clamp(value, 0, instance.getMaxHealth()));
+            }
+         },
+         get invulnerable () {
+            return instance.isInvulnerable();
+         },
+         set invulnerable (value) {
+            instance.setInvulnerable(value);
          },
          get lifeform () {
-            return _.key(API.entityType, instance.type.instance);
+            return _.key(API.entityType, instance.getType());
          },
          set lifeform (value) {
-            instance.type = API.entityType[value];
+            instance.setType(API.entityType[value]);
+         },
+         get mode () {
+            if (player) {
+               return _.key(API.gameMode, instance.getGameMode());
+            }
+         },
+         set mode (value) {
+            if (player) {
+               return instance.setGameMode(API.gameMode[value]);
+            }
+         },
+         get name () {
+            if (player) {
+               return instance.getDisplayName();
+            } else {
+               return instance.getCustomName();
+            }
+         },
+         set name (value) {
+            if (player) {
+               instance.setDisplayName(value);
+               instance.setPlayerListName(value);
+            } else {
+               instance.setCustomName(value);
+               instance.setCustomNameVisible(value !== null);
+            }
          },
          get passengers () {
             return util.passengers(instance).get();
@@ -140,6 +191,19 @@ export function wrapper (_, API) {
          },
          set tags (value) {
             util.tags(instance).set(value);
+         },
+         get uuid () {
+            return instance.getUniqueId().toString();
+         },
+         get vitality () {
+            if (alive) {
+               return instance.getMaxHealth();
+            }
+         },
+         set vitality (value) {
+            if (alive) {
+               instance.setMaxHealth(value);
+            }
          }
       };
       return entity;
@@ -165,7 +229,7 @@ export function chainer (_, API) {
             } else if (args[1] === undefined) {
                return entities.map((entity) => entity.effects[args[0]]);
             } else {
-               entities.map((entity) => (entity.effects[args[0]] = { amplifier: args[1], duration: args[2] }));
+               entities.map((entity) => (entity.effects[args[0]] = { duration: args[1], amplifier: args[2] }));
                return that;
             }
          },
@@ -187,11 +251,35 @@ export function chainer (_, API) {
                return that;
             }
          },
+         invulnerable: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.invulnerable);
+            } else {
+               entities.map((entity) => (entity.invulnerable = args[0]));
+               return that;
+            }
+         },
          lifeform: (...args) => {
             if (args[0] === undefined) {
                return entities.map((entity) => entity.lifeform);
             } else {
                entities.map((entity) => (entity.lifeform = args[0]));
+               return that;
+            }
+         },
+         mode: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.mode);
+            } else {
+               entities.map((entity) => (entity.mode = args[0]));
+               return that;
+            }
+         },
+         name: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.name);
+            } else {
+               entities.map((entity) => (entity.name = args[0]));
                return that;
             }
          },
@@ -224,10 +312,34 @@ export function chainer (_, API) {
                });
                return that;
             }
+         },
+         uuid: () => {
+            return entities.map((entity) => entity.uuid);
+         },
+         vitality: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.vitality);
+            } else {
+               entities.map((entity) => (entity.vitality = args[0]));
+               return that;
+            }
          }
       };
       return that;
    };
 }
 
-export const links = [ 'attribute', 'effect', 'equipment', 'health', 'lifeform', 'passenger', 'tag' ];
+export const links = [
+   'attribute',
+   'effect',
+   'equipment',
+   'health',
+   'invulnerable',
+   'lifeform',
+   'mode',
+   'name',
+   'passenger',
+   'tag',
+   'uuid',
+   'vitality'
+];
