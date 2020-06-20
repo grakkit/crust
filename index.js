@@ -194,8 +194,8 @@ const links = {
 
 const command = {
    on: (name) => {
-      const tab = () => [];
-      const run = () => {};
+      let tab = () => [];
+      let run = () => {};
       const that = {
          tab: (handler) => {
             tab = handler;
