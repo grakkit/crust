@@ -192,6 +192,29 @@ const links = {
    entity: entity.links
 };
 
+const command = {
+   on: (name) => {
+      const tab = () => [];
+      const run = () => {};
+      const that = {
+         tab: (handler) => {
+            tab = handler;
+            return that;
+         },
+         run: (handler) => {
+            run = handler;
+            return that;
+         }
+      };
+      core.command({
+         name: name,
+         execute: (...args) => run(...args),
+         tabComplete: (player, ...args) => tab(player, args.length, ...args) || []
+      });
+      return that;
+   }
+};
+
 const event = {
    on: (shortcut) => {
       const prefixes = [];
@@ -367,11 +390,7 @@ export function $ (object, ...args) {
                case '*':
                   return event.on(suffix);
                case '/':
-                  return core.command({
-                     name: suffix,
-                     execute: args[0] || (() => {}),
-                     tabComplete: (...args) => args[0](...args) || []
-                  });
+                  return command.on(suffix);
                default:
                   return $(`~${suffix}`);
             }
