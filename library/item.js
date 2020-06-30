@@ -1,4 +1,4 @@
-export function wrapper (_, API) {
+export function wrapper (_, $) {
    const util = {
       adventure: (instance, meta, type) => {
          const keys = () => _.array(meta[`${type}ableKeys`]);
@@ -8,11 +8,11 @@ export function wrapper (_, API) {
                return keys().map((key) => key.getKey());
             },
             add: (name) => {
-               meta[`set${pascal}ableKeys`](_.collect(...keys(), API.material[name].getKey()));
+               meta[`set${pascal}ableKeys`](_.collect(...keys(), $.material[name].getKey()));
                instance.setItemMeta(meta);
             },
             remove: (name) => {
-               meta[`set${pascal}ableKeys`](_.collect(...keys().filter((key) => `${key}` !== `${API.material[name]}`)));
+               meta[`set${pascal}ableKeys`](_.collect(...keys().filter((key) => `${key}` !== `${$.material[name]}`)));
                instance.setItemMeta(meta);
             },
             clear: () => {
@@ -24,18 +24,18 @@ export function wrapper (_, API) {
       flags: (instance, meta) => {
          return _.mirror({
             get array () {
-               return _.array(meta.getItemFlags()).map((flag) => _.key(API.itemFlag, flag));
+               return _.array(meta.getItemFlags()).map((flag) => _.key($.itemFlag, flag));
             },
             add: (flag) => {
-               meta.addItemFlags(API.itemFlag[flag]);
+               meta.addItemFlags($.itemFlag[flag]);
                instance.setItemMeta(meta);
             },
             remove: (flag) => {
-               meta.removeItemFlags(API.itemFlag[flag]);
+               meta.removeItemFlags($.itemFlag[flag]);
                instance.setItemMeta(meta);
             },
             clear: () => {
-               meta.removeItemFlags(..._.values(API.itemFlag));
+               meta.removeItemFlags(..._.values($.itemFlag));
                instance.setItemMeta(meta);
             }
          });
@@ -47,14 +47,14 @@ export function wrapper (_, API) {
                '',
                data.amount,
                util.operation[data.operation],
-               API.equipmentSlot[data.slot] || null
+               $.equipmentSlot[data.slot] || null
             );
          },
          serialize: (data) => {
             return {
                amount: data.getAmount(),
                operation: _.key(util.operation, data.getOperation()),
-               slot: data.slot ? _.key(API.equipmentSlot, data.getSlot()) : null,
+               slot: data.slot ? _.key($.equipmentSlot, data.getSlot()) : null,
                uuid: `${data.getUniqueId()}`
             };
          }
@@ -80,7 +80,7 @@ export function wrapper (_, API) {
                case 'List':
                case 'ByteArray':
                case 'IntArray':
-                  const list = util.nms(`NBTTag${data.type}`);
+                  const list = util.nms(`NBTTag${data.type}`, data.type !== 'List' && _.collect());
                   data.value.forEach((entry) => list.add(util.nbt.parse(entry)));
                   return list;
                case 'Compound':
@@ -125,13 +125,14 @@ export function wrapper (_, API) {
             }
          }
       },
-      nms: (property) => {
-         return new (Java.type(`net.minecraft.server.${`${server.getClass()}`.split('.')[3]}.${property}`))();
+      nms: (property, ...args) => {
+         const type = Java.type(`net.minecraft.server.${`${server.getClass()}`.split('.')[3]}.${property}`);
+         return new type(..._.flat(args));
       },
       operation: {
-         add: API.amOperation.add_number,
-         multiply_base: API.amOperation.add_scalar,
-         multiply: API.amOperation.multiply_scalar_1
+         add: $.amOperation.add_number,
+         multiply_base: $.amOperation.add_scalar,
+         multiply: $.amOperation.multiply_scalar_1
       }
    };
    return (instance) => {
@@ -145,7 +146,7 @@ export function wrapper (_, API) {
          get attributes () {
             const meta = instance.getItemMeta();
             if (meta) {
-               return _.define(API.attribute, (entry) => {
+               return _.define($.attribute, (entry) => {
                   return _.mirror({
                      get array () {
                         const modifiers = meta.hasAttributeModifiers() && meta.getAttributeModifiers(entry.value);
@@ -172,7 +173,7 @@ export function wrapper (_, API) {
          set attributes (value) {
             const meta = instance.getItemMeta();
             if (meta) {
-               _.keys(API.attribute).forEach((key) => (item.attributes[key] = value[key] || []));
+               _.keys($.attribute).forEach((key) => (item.attributes[key] = value[key] || []));
             }
          },
          get damage () {
@@ -232,7 +233,7 @@ export function wrapper (_, API) {
          get enchantments () {
             const meta = instance.getItemMeta();
             if (meta) {
-               return _.define(API.enchantment, (entry) => {
+               return _.define($.enchantment, (entry) => {
                   return {
                      get: () => {
                         if (item.material === 'enchanted_book') return meta.getStoredEnchantLevel(entry.value);
@@ -256,7 +257,7 @@ export function wrapper (_, API) {
          set enchantments (value) {
             const meta = instance.getItemMeta();
             if (meta) {
-               _.keys(API.enchantment).forEach((key) => (item.enchantments[key] = value[key] || 0));
+               _.keys($.enchantment).forEach((key) => (item.enchantments[key] = value[key] || 0));
             }
          },
          get flags () {
@@ -270,6 +271,9 @@ export function wrapper (_, API) {
             if (meta) {
                return util.flags(instance, meta).set(value);
             }
+         },
+         get instance () {
+            return instance;
          },
          get lore () {
             const meta = instance.getItemMeta();
@@ -285,10 +289,10 @@ export function wrapper (_, API) {
             }
          },
          get material () {
-            return _.key(API.material, instance.getType());
+            return _.key($.material, instance.getType());
          },
          set material (value) {
-            instance.setType(API.material[value]);
+            instance.setType($.material[value]);
          },
          get name () {
             const meta = instance.getItemMeta();
@@ -342,7 +346,7 @@ export function wrapper (_, API) {
    };
 }
 
-export function chainer (_, API) {
+export function chainer (_, $) {
    const util = {
       modifiers: (set) => {
          return {
@@ -450,6 +454,9 @@ export function chainer (_, API) {
                return that;
             }
          },
+         instance: () => {
+            return items.map((item) => item.instance);
+         },
          lore: (...args) => {
             if (args[0] === undefined) {
                return items.map((item) => item.lore);
@@ -505,6 +512,16 @@ export function chainer (_, API) {
                return that;
             }
          },
+         serialize: () => {
+            return items.map((item) => {
+               return {
+                  format: 'item',
+                  material: item.material,
+                  amount: item.amount,
+                  nbt: item.nbt
+               };
+            });
+         },
          title: () => {
             return items.map((item) => item.title);
          },
@@ -521,6 +538,12 @@ export function chainer (_, API) {
    };
 }
 
+export function parser (_, $) {
+   return (input) => {
+      return $(`!${input.material}`).amount(input.amount).nbt(input.nbt).instance();
+   };
+}
+
 export const links = [
    'amount',
    'attribute',
@@ -529,11 +552,13 @@ export const links = [
    'destroy',
    'enchantment',
    'flag',
+   'instance',
    'lore',
    'material',
    'nbt',
    'name',
    'place',
+   'serialize',
    'title',
    'unbreakable'
 ];

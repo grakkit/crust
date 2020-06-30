@@ -1,4 +1,4 @@
-export function wrapper (_, API) {
+export function wrapper (_, $) {
    const util = {
       attributable: Java.type('org.bukkit.attribute.Attributable'),
       attribute: {
@@ -33,10 +33,10 @@ export function wrapper (_, API) {
                return _.array(instance.getPassengers());
             },
             add: (value) => {
-               instance.addPassenger((value && value.one) || value);
+               instance.addPassenger(value);
             },
             delete: (value) => {
-               instance.removePassenger((value && value.one) || value);
+               instance.removePassenger(value);
             },
             clear: () => {
                instance.eject();
@@ -66,7 +66,7 @@ export function wrapper (_, API) {
       const player = instance instanceof Java.type('org.bukkit.entity.Player');
       const entity = {
          get attributes () {
-            return _.define(API.attribute, (entry) => {
+            return _.define($.attribute, (entry) => {
                if (attributable) {
                   const attribute = instance.getAttribute(entry.value);
                   if (attribute) {
@@ -84,10 +84,35 @@ export function wrapper (_, API) {
             });
          },
          set attributes (value) {
-            _.keys(API.attribute).forEach((key) => (entity.attributes[key] = value[key]));
+            _.keys($.attribute).forEach((key) => (entity.attributes[key] = value[key]));
+         },
+         get data () {
+            const container = instance.getPersistentDataContainer();
+            return _.object(_.array(container.getRaw().entrySet()), (entry) => {
+               const directory = new org.bukkit.NamespacedKey(...entry.getKey().split(':'));
+               if (directory.getNamespace() === 'grakkit') {
+                  return { [`${directory.getKey()}`]: _.base.decode(entry.getValue().asString()) };
+               }
+            });
+         },
+         set data (value) {
+            const container = instance.getPersistentDataContainer();
+            _.array(container.getRaw().entrySet()).forEach((entry) => {
+               container.remove(new org.bukkit.NamespacedKey(...entry.getKey().split(':')));
+            });
+            _.entries(value).forEach((entry) => {
+               container.set(
+                  new org.bukkit.NamespacedKey('grakkit', entry.key),
+                  org.bukkit.persistence.PersistentDataType.STRING,
+                  _.base.encode(entry.value)
+               );
+            });
+         },
+         distance: (target, flat) => {
+            _.dist(entity.location(), target, flat);
          },
          get effects () {
-            return _.define(API.peType, (entry) => {
+            return _.define($.peType, (entry) => {
                return {
                   get: () => {
                      if (alive) {
@@ -111,10 +136,10 @@ export function wrapper (_, API) {
             });
          },
          set effects (value) {
-            _.keys(API.peType).forEach((key) => (entity.effects[key] = value[key]));
+            _.keys($.peType).forEach((key) => (entity.effects[key] = value[key]));
          },
          get equipment () {
-            return _.define(API.equipmentSlot, (entry) => {
+            return _.define($.equipmentSlot, (entry) => {
                const slot = util.equipment[entry.key];
                const pascal = _.pascal(slot);
                return {
@@ -126,14 +151,14 @@ export function wrapper (_, API) {
                   set: (value) => {
                      if (alive) {
                         value || (value = null);
-                        instance.getEquipment()[`set${pascal}`]((value && value.one) || value);
+                        instance.getEquipment()[`set${pascal}`](value);
                      }
                   }
                };
             });
          },
          set equipment (value) {
-            _.keys(API.equipmentSlot).forEach((key) => (instance.equipment[util.equipment[key]] = value[key]));
+            _.keys($.equipmentSlot).forEach((key) => (instance.equipment[util.equipment[key]] = value[key]));
          },
          get health () {
             if (alive) {
@@ -145,6 +170,9 @@ export function wrapper (_, API) {
                instance.setHealth(_.clamp(value, 0, instance.getMaxHealth()));
             }
          },
+         get instance () {
+            return instance;
+         },
          get invulnerable () {
             return instance.isInvulnerable();
          },
@@ -152,19 +180,25 @@ export function wrapper (_, API) {
             instance.setInvulnerable(value);
          },
          get lifeform () {
-            return _.key(API.entityType, instance.getType());
+            return _.key($.entityType, instance.getType());
          },
          set lifeform (value) {
-            instance.setType(API.entityType[value]);
+            instance.setType($.entityType[value]);
+         },
+         get location () {
+            return instance.getLocation();
+         },
+         set location (value) {
+            instance.teleport(value);
          },
          get mode () {
             if (player) {
-               return _.key(API.gameMode, instance.getGameMode());
+               return _.key($.gameMode, instance.getGameMode());
             }
          },
          set mode (value) {
             if (player) {
-               return instance.setGameMode(API.gameMode[value]);
+               return instance.setGameMode($.gameMode[value]);
             }
          },
          get name () {
@@ -189,6 +223,17 @@ export function wrapper (_, API) {
          set passengers (value) {
             util.passengers(instance).set(value);
          },
+         get sneaking () {
+            if (player) {
+               return instance.isSneaking();
+            }
+         },
+         set sneaking (value) {
+            if (player) {
+               instance.setSneaking(value);
+            }
+         },
+         sound: (type, options) => {},
          get tags () {
             return util.tags(instance).get();
          },
@@ -231,7 +276,7 @@ export function wrapper (_, API) {
    };
 }
 
-export function chainer (_, API) {
+export function chainer (_, $) {
    return (...entities) => {
       const that = {
          attribute: (...args) => {
@@ -243,6 +288,25 @@ export function chainer (_, API) {
                entities.map((entity) => (entity.attributes[args[0]] = args[1]));
                return that;
             }
+         },
+         data: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.data);
+            } else {
+               entities.map((entity) => {
+                  const data = entity.data;
+                  if (typeof args[0] === 'function') {
+                     args[0](data);
+                     entity.data = data;
+                  } else {
+                     entity.data = args[0];
+                  }
+               });
+               return that;
+            }
+         },
+         distance: (...args) => {
+            return entities.map((entity) => entity.distance(...args));
          },
          effect: (...args) => {
             if (args[0] === undefined) {
@@ -272,6 +336,9 @@ export function chainer (_, API) {
                return that;
             }
          },
+         instance: () => {
+            return entities.map((entity) => entity.instance);
+         },
          invulnerable: (...args) => {
             if (args[0] === undefined) {
                return entities.map((entity) => entity.invulnerable);
@@ -285,6 +352,14 @@ export function chainer (_, API) {
                return entities.map((entity) => entity.lifeform);
             } else {
                entities.map((entity) => (entity.lifeform = args[0]));
+               return that;
+            }
+         },
+         location: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.location);
+            } else {
+               entities.map((entity) => (entity.location = args[0]));
                return that;
             }
          },
@@ -319,6 +394,21 @@ export function chainer (_, API) {
                return that;
             }
          },
+         serialize: (...args) => {
+            return {};
+         },
+         sneaking: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.sneaking);
+            } else {
+               entities.map((entity) => (entity.sneaking = args[0]));
+               return that;
+            }
+         },
+         sound: (...args) => {
+            entities.map((entity) => entity.sound(...args));
+            return that;
+         },
          tag: (...args) => {
             if (args[0] === undefined) {
                return entities.map((entity) => entity.tags);
@@ -348,24 +438,42 @@ export function chainer (_, API) {
                entities.map((entity) => (entity.vitality = args[0]));
                return that;
             }
+         },
+         world: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.world);
+            } else {
+               entities.map((entity) => (entity.world = args[0]));
+               return that;
+            }
          }
       };
       return that;
    };
 }
 
+export function parser (_, $) {}
+
 export const links = [
    'attribute',
+   'data',
+   'distance',
    'effect',
    'equipment',
    'health',
+   'instance',
    'invulnerable',
    'lifeform',
+   'location',
    'mode',
    'name',
    'passenger',
+   'serialize',
+   'sneaking',
+   'sound',
    'tag',
    'text',
    'uuid',
-   'vitality'
+   'vitality',
+   'world'
 ];

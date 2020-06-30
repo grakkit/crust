@@ -2,162 +2,38 @@ const framework = core.import('grakkit/framework');
 
 const API = framework.object(
    framework.entries({
-      // Entity Enums
-      /*
-      aaPickupRule: {
-         source: Java.type('org.bukkit.entity.AbstractArrow.PickupRule')
+      action: {
+         source: Java.type('org.bukkit.event.block.Action')
       },
-      aaPickupStatus: {
-         source: Java.type('org.bukkit.entity.AbstractArrow.PickupStatus')
-      },
-      catType: {
-         source: Java.type('org.bukkit.entity.Cat.Type')
-      },
-      edPhase: {
-         source: Java.type('org.bukkit.entity.EnderDragon.Phase')
-      },
-      */
-      entityType: {
-         source: Java.type('org.bukkit.entity.EntityType'),
-         consumer: (value) => (value.name() === 'UNKNOWN' ? undefined : value.getKey().getKey())
-      },
-      /*
-      eoSpawnReason: {
-         source: Java.type('org.bukkit.entity.ExperienceOrb.SpawnReason')
-      },
-      evokerSpell: {
-         source: Java.type('org.bukkit.entity.Evoker.Spell')
-      },
-      foxType: {
-         source: Java.type('org.bukkit.entity.Fox.Type')
-      },
-      horseColor: {
-         source: Java.type('org.bukkit.entity.Horse.Color')
-      },
-      horseStyle: {
-         source: Java.type('org.bukkit.entity.Horse.Style')
-      },
-      horseVariant: {
-         source: Java.type('org.bukkit.entity.Horse.Variant')
-      },
-      llamaColor: {
-         source: Java.type('org.bukkit.entity.Llama.Color')
-      },
-      mcVariant: {
-         source: Java.type('org.bukkit.entity.MushroomCow.Variant')
-      },
-      ocelotType: {
-         source: Java.type('org.bukkit.entity.Ocelot.Type')
-      },
-      pandaGene: {
-         source: Java.type('org.bukkit.entity.Panda.Gene')
-      },
-      parrotVariant: {
-         source: Java.type('org.bukkit.entity.Parrot.Variant')
-      },
-      pose: {
-         source: Java.type('org.bukkit.entity.Pose')
-      },
-      rabbitType: {
-         source: Java.type('org.bukkit.entity.Rabbit.Type')
-      },
-      spellcasterSpell: {
-         source: Java.type('org.bukkit.entity.Spellcaster.Spell')
-      },
-      ssType: {
-         source: Java.type('org.bukkit.entity.Skeleton.SkeletonType')
-      },
-      tfPattern: {
-         source: Java.type('org.bukkit.entity.TropicalFish.Pattern')
-      },
-      villagerProfession: {
-         source: Java.type('org.bukkit.entity.Villager.Profession')
-      },
-      villagerType: {
-         source: Java.type('org.bukkit.entity.Villager.Type')
-      },
-      */
-
-      // Inventory Enums
-      /*
-      clickType: {
-         source: Java.type('org.bukkit.event.inventory.ClickType')
-      },
-      dragType: {
-         source: Java.type('org.bukkit.event.inventory.DragType')
-      },
-      */
-      equipmentSlot: {
-         source: Java.type('org.bukkit.inventory.EquipmentSlot')
-      },
-      /*
-      inventoryAction: {
-         source: Java.type('org.bukkit.event.inventory.InventoryAction')
-      },
-      iceReason: {
-         source: Java.type('org.bukkit.event.inventory.InventoryCloseEvent.Reason')
-      },
-      inventoryType: {
-         source: Java.type('org.bukkit.event.inventory.InventoryType')
-      },
-      itSlotType: {
-         source: Java.type('org.bukkit.event.inventory.InventoryType.SlotType')
-      },
-      ivProperty: {
-         source: Java.type('org.bukkit.inventory.InventoryView.Property')
-      },
-      */
-      itemFlag: {
-         source: Java.type('org.bukkit.inventory.ItemFlag')
-      },
-      /*
-      mainHand: {
-         source: Java.type('org.bukkit.inventory.MainHand')
-      },
-      */
-
-      // Item Enums
       attribute: {
          source: Java.type('org.bukkit.attribute.Attribute')
       },
       amOperation: {
          source: Java.type('org.bukkit.attribute.AttributeModifier.Operation')
       },
-      /*
-      bmGeneration: {
-         source: Java.type('org.bukkit.inventory.meta.BookMeta.Generation')
+      blockFace: {
+         source: Java.type('org.bukkit.block.BlockFace')
       },
-      */
       enchantment: {
          source: Java.type('org.bukkit.enchantments.Enchantment'),
          consumer: (value) => value.getKey().getKey()
       },
-      /*
-      enchantmentTarget: {
-         source: Java.type('org.bukkit.enchantments.EnchantmentTarget')
+      entityType: {
+         source: Java.type('org.bukkit.entity.EntityType'),
+         consumer: (value) => (value.name() === 'UNKNOWN' ? undefined : value.getKey().getKey())
       },
-      */
+      equipmentSlot: {
+         source: Java.type('org.bukkit.inventory.EquipmentSlot')
+      },
+      gameMode: {
+         source: Java.type('org.bukkit.GameMode')
+      },
+      itemFlag: {
+         source: Java.type('org.bukkit.inventory.ItemFlag')
+      },
       material: {
          source: Java.type('org.bukkit.Material'),
          consumer: (value) => (value.isLegacy() ? undefined : value.getKey().getKey())
-      },
-
-      // Component Enums
-      /*
-      ceAction: {
-         source: Java.type('net.md_5.bungee.api.chat.ClickEvent.Action')
-      },
-      chatColor: {
-         source: Java.type('net.md_5.bungee.api.ChatColor')
-      },
-      heAction: {
-         source: Java.type('net.md_5.bungee.api.chat.HoverEvent.Action')
-      }
-      */
-
-      // Other Enums
-      gameMode: {
-         source: Java.type('org.bukkit.GameMode')
       },
       peType: {
          source: Java.type('org.bukkit.potion.PotionEffectType'),
@@ -173,24 +49,6 @@ const API = framework.object(
       };
    }
 );
-
-import * as item from './library/item.min.js';
-import * as entity from './library/entity.min.js';
-
-const wrappers = {
-   item: item.wrapper(framework, API),
-   entity: entity.wrapper(framework, API)
-};
-
-const chainers = {
-   item: item.chainer(framework, API),
-   entity: entity.chainer(framework, API)
-};
-
-const links = {
-   item: item.links,
-   entity: entity.links
-};
 
 const command = {
    on: (name) => {
@@ -251,40 +109,17 @@ const event = {
             listeners.forEach((listener) => {
                let ready = true;
                conditions.forEach((condition) => {
-                  const event = args[0];
-                  const cancellable = event instanceof Java.type('org.bukkit.event.Cancellable');
-                  const player = event instanceof Java.type('org.bukkit.event.player.PlayerEvent');
+                  const event = framework.access(args[0]);
+                  const cancellable = args[0] instanceof Java.type('org.bukkit.event.Cancellable');
                   switch (typeof condition) {
                      case 'boolean':
-                        if (cancellable && condition === event.isCancelled()) ready = false;
+                        if (cancellable && condition === args[0].isCancelled()) ready = false;
                         break;
                      case 'function':
                         if (!condition(...args)) ready = false;
                         break;
                      case 'object':
-                        if (!framework.match(framework.access(event), condition)) ready = false;
-                        break;
-                     case 'string':
-                        /*
-                        const prefix = condition[0];
-                        const suffix = condition.slice(1);
-                        switch (prefix) {
-                           case '~':
-                              break;
-                           case '!':
-                              break;
-                           case '@':
-                              break;
-                           case '#':
-                              break;
-                           case '%':
-                              break;
-                           case '?':
-                              break;
-                           default:
-                              break;
-                        }
-                        */
+                        if (!framework.match(event, condition)) ready = false;
                         break;
                   }
                });
@@ -337,49 +172,20 @@ const event = {
    })()
 };
 
-const one = (type, instance) => {
-   const that = chainers[type](wrappers[type](instance));
-   const output = framework.object(links[type], (link) => {
-      return {
-         [link]: (...args) => {
-            const result = that[link](...args);
-            return that === result ? output : result[0];
-         }
-      };
-   });
-   return framework.extend(output, {
-      get one () {
-         return instance;
-      }
-   });
-};
-
-const all = (type, ...instances) => {
-   const that = chainers[type](...instances.map((instance) => wrappers[type](instance)));
-   return framework.extend(that, {
-      get first () {
-         return instances[0];
-      },
-      forEach: (script) => {
-         return instances.forEach(script);
-      },
-      get last () {
-         return instances.slice(-1)[0];
-      }
-   });
-};
-
-export function $ (object, ...args) {
-   if (object !== null) {
+const $ = (object, ...args) => {
+   if ([ null, undefined ].includes(object)) {
+      return object;
+   } else {
       switch (typeof object) {
          case 'string':
             const prefix = object[0];
             const suffix = object.slice(1);
             switch (prefix) {
                case '~':
-                  return null;
+                  return eval(suffix);
                case '!':
-                  return one('item', new (Java.type('org.bukkit.inventory.ItemStack'))(API.material[suffix]));
+                  const item = new (Java.type('org.bukkit.inventory.ItemStack'))(API.material[suffix]);
+                  return one('item', item.ensureServerConversions());
                case '@':
                   const context = args[0] || server.getConsoleSender();
                   return all('entity', ...framework.array(server.selectEntities(context, object)));
@@ -392,25 +198,86 @@ export function $ (object, ...args) {
                case '/':
                   return command.on(suffix);
                default:
-                  return $(`~${suffix}`);
+                  return _.player(object);
             }
          case 'object':
             if (object instanceof Java.type('org.bukkit.block.Block')) {
-               //return wrappers.block(core.access(instance));
+               return one('block', object);
             } else if (object instanceof Java.type('org.bukkit.entity.Entity')) {
                return one('entity', object);
             } else if (object instanceof Java.type('org.bukkit.inventory.ItemStack')) {
                return one('item', object);
-            } else if (object instanceof Java.type('org.bukkit.inventory.Inventory')) {
-               //return wrappers.inventory(core.access(instance));
-            } else if (object instanceof Java.type('org.bukkit.Location')) {
-               //return wrappers.location(core.access(instance));
-            } else if (object instanceof Java.type('org.bukkit.World')) {
-               //return wrappers.world(core.access(instance));
+            } else if (object.constructor === Array) {
+               if ([ null, undefined ].includes(object[0])) {
+                  return object[0];
+               } else if (object[0].constructor === Object) {
+                  return parsers[object[0].format](object[0]);
+               } else if (typeof object === 'object') {
+                  return $(object[0]).serialize();
+               } else {
+                  return null;
+               }
+            } else {
+               return null;
             }
-            break;
       }
    }
-}
+};
 
-core.export(Object.assign($, API));
+Object.assign($, API);
+
+import * as block from './library/block.min.js';
+import * as entity from './library/entity.min.js';
+import * as item from './library/item.min.js';
+
+const wrappers = {
+   block: block.wrapper(framework, $),
+   entity: entity.wrapper(framework, $),
+   item: item.wrapper(framework, $)
+};
+
+const chainers = {
+   block: block.chainer(framework, $),
+   entity: entity.chainer(framework, $),
+   item: item.chainer(framework, $)
+};
+
+const parsers = {
+   block: block.parser(framework, $),
+   entity: entity.parser(framework, $),
+   item: item.parser(framework, $)
+};
+
+const links = {
+   block: block.links,
+   entity: entity.links,
+   item: item.links
+};
+
+const one = (type, instance) => {
+   const that = chainers[type](wrappers[type](instance));
+   const output = framework.object(links[type], (link) => {
+      return {
+         [link]: (...args) => {
+            const result = that[link](...args);
+            return that === result ? output : result[0];
+         }
+      };
+   });
+   return output;
+};
+
+const all = (type, ...instances) => {
+   const that = chainers[type](...instances.map((instance) => wrappers[type](instance)));
+   return framework.extend(
+      that,
+      ...Object.getOwnPropertyNames(Array.prototype).map((key) => {
+         const value = Array.prototype[key];
+         if (typeof value === 'function') {
+            return { [key]: (...args) => value.apply(instances, args) };
+         }
+      })
+   );
+};
+
+core.export($);
