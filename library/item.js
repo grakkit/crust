@@ -1,4 +1,4 @@
-export function wrapper (_, $) {
+export const wrapper = (_, $) => {
    const util = {
       adventure: (instance, meta, type) => {
          const keys = () => _.array(meta[`${type}ableKeys`]);
@@ -152,76 +152,6 @@ export function wrapper (_, $) {
             }
          });
       },
-      nbt: {
-         parse: (data) => {
-            let compound = undefined;
-            switch (data.type) {
-               case 'None':
-                  return data.value;
-               case 'Int':
-               case 'Float':
-               case 'Double':
-               case 'Long':
-               case 'Short':
-               case 'Byte':
-               case 'String':
-                  compound = util.nms('NBTTagCompound');
-                  compound[`set${data.type}`]('x', data.value);
-                  return compound.get('x');
-               case 'End':
-                  return null;
-               case 'List':
-               case 'ByteArray':
-               case 'IntArray':
-                  const list = util.nms(`NBTTag${data.type}`, data.type !== 'List' && _.collect());
-                  data.value.forEach((entry) => list.add(util.nbt.parse(entry)));
-                  return list;
-               case 'Compound':
-                  compound = util.nms('NBTTagCompound');
-                  _.entries(data.value).forEach((entry) => compound.set(entry.key, util.nbt.parse(entry.value)));
-                  return compound;
-            }
-         },
-         serialize: (data) => {
-            if ([ null, undefined ].includes(data)) {
-               return { type: 'None', value: data };
-            } else {
-               let value = undefined;
-               const type = data.getClass().getCanonicalName().split('NBTTag')[1];
-               switch (type) {
-                  case 'Int':
-                  case 'Float':
-                  case 'Double':
-                  case 'Long':
-                  case 'Short':
-                  case 'Byte':
-                     value = data.asDouble();
-                     break;
-                  case 'String':
-                     value = data.asString();
-                     break;
-                  case 'End':
-                     value = null;
-                     break;
-                  case 'List':
-                  case 'ByteArray':
-                  case 'IntArray':
-                     value = _.array(data).map(util.nbt.serialize);
-                     break;
-                  case 'Compound':
-                     value = _.object(_.array(data.map.entrySet()), (entry) => {
-                        return { [entry.getKey()]: util.nbt.serialize(entry.getValue()) };
-                     });
-                     break;
-               }
-               return { type: type, value: value };
-            }
-         }
-      },
-      nms: (property, ...args) => {
-         const type = Java.type(`net.minecraft.server.${`${server.getClass()}`.split('.')[3]}.${property}`);
-         return new type(..._.flat(args));
-      },
       remap: (source, consumer) => {
          return _.define(source, (entry) => {
             if (entry.key === _.lower(entry.key)) return consumer(entry);
@@ -236,7 +166,7 @@ export function wrapper (_, $) {
          set amount (value) {
             instance.setAmount(_.clamp(value, 1, 127));
          },
-         get attributes () {
+         get attribute () {
             const meta = instance.getItemMeta();
             if (meta) {
                return util.remap($.attribute, (entry) => {
@@ -244,10 +174,10 @@ export function wrapper (_, $) {
                });
             }
          },
-         set attributes (value) {
+         set attribute (value) {
             const meta = instance.getItemMeta();
             if (meta) {
-               _.keys($.attribute).forEach((key) => (item.attributes[key] = value[key] || []));
+               _.keys($.attribute).forEach((key) => (item.attribute[key] = value[key] || []));
             }
          },
          get damage () {
@@ -299,22 +229,23 @@ export function wrapper (_, $) {
                instance.setItemMeta(meta);
             }
          },
-         get destroys () {
+         get destroy () {
             const meta = instance.getItemMeta();
             if (meta) {
                return util.adventure(instance, meta, 'destroy').get();
             }
          },
-         set destroys (value) {
+         set destroy (value) {
             const meta = instance.getItemMeta();
             if (meta) {
                util.adventure(instance, meta, 'destroy').set(value);
             }
          },
          drop: (location, naturally) => {
-            location.getWorld()[`dropItem${naturally ? 'Naturally' : ''}`](location, instance);
+            const target = $('-', location);
+            return $(target.getWorld()[`dropItem${naturally ? 'Naturally' : ''}`](target, instance));
          },
-         get enchantments () {
+         get enchantment () {
             const meta = instance.getItemMeta();
             if (meta) {
                return util.remap($.enchantment, (entry) => {
@@ -338,19 +269,19 @@ export function wrapper (_, $) {
                });
             }
          },
-         set enchantments (value) {
+         set enchantment (value) {
             const meta = instance.getItemMeta();
             if (meta) {
-               _.keys($.enchantment).forEach((key) => (item.enchantments[key] = value[key] || 0));
+               _.keys($.enchantment).forEach((key) => (item.enchantment[key] = value[key] || 0));
             }
          },
-         get flags () {
+         get flag () {
             const meta = instance.getItemMeta();
             if (meta) {
                return util.flags(instance, meta).get();
             }
          },
-         set flags (value) {
+         set flag (value) {
             const meta = instance.getItemMeta();
             if (meta) {
                return util.flags(instance, meta).set(value);
@@ -392,18 +323,18 @@ export function wrapper (_, $) {
             }
          },
          get nbt () {
-            return util.nbt.serialize(instance.getHandle().getTag());
+            return _.serialize(instance.getHandle().getTag());
          },
          set nbt (data) {
-            instance.getHandle().setTag(util.nbt.parse(data));
+            instance.getHandle().setTag(_.parse(data));
          },
-         get places () {
+         get place () {
             const meta = instance.getItemMeta();
             if (meta) {
                return util.adventure(instance, meta, 'place').get();
             }
          },
-         set places (value) {
+         set place (value) {
             const meta = instance.getItemMeta();
             if (meta) {
                util.adventure(instance, meta, 'place').set(value);
@@ -428,209 +359,40 @@ export function wrapper (_, $) {
       };
       return item;
    };
-}
+};
 
-export function chainer (_, $) {
-   return (...items) => {
-      const that = {
-         amount: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.amount);
-            } else {
-               items.map((item) => (item.amount = args[0]));
-               return that;
-            }
-         },
-         attribute: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.attributes);
-            } else if (args[1] === undefined) {
-               return items.map((item) => item.attributes[args[0]]);
-            } else {
-               items.map((item) => {
-                  if (typeof args[1] === 'function') {
-                     args[1](item.attributes[args[0]]);
-                  } else {
-                     item.attributes[args[0]].clear();
-                     args.slice(1).forEach(item.attributes[args[0]].add);
-                  }
-               });
-               return that;
-            }
-         },
-         damage: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.damage);
-            } else {
-               items.map((item) => (item.damage = args[0]));
-               return that;
-            }
-         },
-         data: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.data);
-            } else {
-               items.map((item) => {
-                  const data = item.data;
-                  if (typeof args[0] === 'function') {
-                     args[0](data);
-                     item.data = data;
-                  } else {
-                     item.data = args[0];
-                  }
-               });
-               return that;
-            }
-         },
-         destroy: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.destroys);
-            } else {
-               items.map((item) => {
-                  if (typeof args[0] === 'function') {
-                     args[0](item.destroys);
-                  } else {
-                     item.destroys.clear();
-                     args.forEach(item.destroys.add);
-                  }
-               });
-               return that;
-            }
-         },
-         drop: (...args) => {
-            return items.map((item) => item.drop(...args));
-         },
-         enchantment: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.enchantments);
-            } else if (args[1] === undefined) {
-               return items.map((item) => item.enchantments[args[0]]);
-            } else {
-               items.map((item) => (item.enchantments[args[0]] = args[1]));
-               return that;
-            }
-         },
-         flag: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.flags);
-            } else {
-               items.map((item) => {
-                  if (typeof args[0] === 'function') {
-                     args[0](item.flags);
-                  } else {
-                     item.flags.clear();
-                     args.forEach(item.flags.add);
-                  }
-               });
-               return that;
-            }
-         },
-         instance: () => {
-            return items.map((item) => item.instance);
-         },
-         lore: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.lore);
-            } else {
-               items.map((item) => (item.lore = args[0]));
-               return that;
-            }
-         },
-         material: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.material);
-            } else {
-               items.map((item) => (item.material = args[0]));
-               return that;
-            }
-         },
-         name: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.name);
-            } else {
-               items.map((item) => (item.name = args[0]));
-               return that;
-            }
-         },
-         nbt: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.nbt);
-            } else {
-               items.map((item) => {
-                  const nbt = item.nbt;
-                  if (typeof args[0] === 'function') {
-                     args[0](nbt);
-                     item.nbt = nbt;
-                  } else {
-                     item.nbt = args[0];
-                  }
-               });
-               return that;
-            }
-         },
-         place: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.places);
-            } else {
-               items.map((item) => {
-                  if (typeof args[0] === 'function') {
-                     args[0](item.places);
-                  } else {
-                     item.places.clear();
-                     args.forEach(item.places.add);
-                  }
-               });
-               return that;
-            }
-         },
-         serialize: () => {
-            return items.map((item) => {
-               return {
-                  format: 'item',
-                  material: item.material,
-                  amount: item.amount,
-                  nbt: item.nbt
-               };
-            });
-         },
-         title: () => {
-            return items.map((item) => item.title);
-         },
-         unbreakable: (...args) => {
-            if (args[0] === undefined) {
-               return items.map((item) => item.unbreakable);
-            } else {
-               items.map((item) => (item.unbreakable = args[0]));
-               return that;
-            }
-         }
-      };
-      return that;
-   };
-}
-
-export function parser (_, $) {
+export const parser = (_, $) => {
    return (input) => {
-      return $(`!${input.material}`).amount(input.amount).nbt(input.nbt).instance();
+      const data = input.data.value;
+      return $(`!${data.id.value.split(':')[1]}`).amount(data.Count.value).nbt(data.tag);
    };
-}
+};
 
-export const links = [
-   'amount',
-   'attribute',
-   'damage',
-   'data',
-   'destroy',
-   'drop',
-   'enchantment',
-   'flag',
-   'instance',
-   'lore',
-   'material',
-   'nbt',
-   'name',
-   'place',
-   'serialize',
-   'title',
-   'unbreakable'
-];
+export const chain = (_, $) => {
+   return {
+      amount: 'setter',
+      attribute: 'listerNest',
+      damage: 'setter',
+      data: 'appender',
+      destroy: 'lister',
+      drop: 'runner',
+      enchantment: 'setterNest',
+      flag: 'lister',
+      instance: 'getter',
+      lore: 'setter',
+      material: 'setter',
+      name: 'setter',
+      nbt: 'appender',
+      place: 'lister',
+      serialize: (item) => {
+         return {
+            format: 'item',
+            material: item.material,
+            amount: item.amount,
+            nbt: item.nbt
+         };
+      },
+      title: 'getter',
+      unbreakable: 'setter'
+   };
+};

@@ -1,4 +1,4 @@
-export function wrapper (_, $) {
+export const wrapper = (_, $) => {
    const util = {
       attributable: Java.type('org.bukkit.attribute.Attributable'),
       attribute: {
@@ -144,9 +144,6 @@ export function wrapper (_, $) {
             }
          });
       },
-      color: (text) => {
-         return text.replace(/(&)/g, '§').replace(/(§§)/g, '&');
-      },
       key: (...args) => {
          return new (Java.type('org.bukkit.NamespacedKey'))(...args);
       },
@@ -184,13 +181,13 @@ export function wrapper (_, $) {
       passengers: (instance) => {
          return _.mirror({
             get array () {
-               return _.array(instance.getPassengers());
+               return _.array(instance.getPassengers()).map((passenger) => $(passenger));
             },
             add: (value) => {
-               instance.addPassenger((value && value.instance && value.instance()) || value);
+               instance.addPassenger($('-', value));
             },
             delete: (value) => {
-               instance.removePassenger((value && value.instance && value.instance()) || value);
+               instance.removePassenger($('-', value));
             },
             clear: () => {
                instance.eject();
@@ -219,7 +216,13 @@ export function wrapper (_, $) {
       const attributable = instance instanceof Java.type('org.bukkit.attribute.Attributable');
       const player = instance instanceof Java.type('org.bukkit.entity.Player');
       const entity = {
-         get attributes () {
+         get ai () {
+            instance.hasAI();
+         },
+         set ai (value) {
+            instance.setAI(value);
+         },
+         get attribute () {
             return util.remap($.attribute, (entry) => {
                if (attributable) {
                   const attribute = instance.getAttribute(entry.value);
@@ -237,14 +240,23 @@ export function wrapper (_, $) {
                }
             });
          },
-         set attributes (value) {
-            _.keys($.attribute).forEach((key) => (entity.attributes[key] = value[key]));
+         set attribute (value) {
+            _.keys($.attribute).forEach((key) => (entity.attribute[key] = value[key]));
          },
          get bars () {
             return util.bars(instance).get();
          },
          set bars (value) {
             util.bars(instance).set(value);
+         },
+         get block () {
+            return $(instance.getLocation().getBlock());
+         },
+         get collidable () {
+            instance.isCollidable();
+         },
+         set collidable (value) {
+            instance.setCollidable(value);
          },
          get data () {
             const container = instance.getPersistentDataContainer();
@@ -276,9 +288,9 @@ export function wrapper (_, $) {
             });
          },
          distance: (target, flat) => {
-            return _.dist(entity.location, target, flat);
+            return _.dist(entity.location, $('-', target), flat);
          },
-         get effects () {
+         get effect () {
             return util.remap($.peType, (entry) => {
                return {
                   get: () => {
@@ -302,8 +314,8 @@ export function wrapper (_, $) {
                };
             });
          },
-         set effects (value) {
-            _.keys($.peType).forEach((key) => (entity.effects[key] = value[key]));
+         set effect (value) {
+            _.keys($.peType).forEach((key) => (entity.effect[key] = value[key]));
          },
          get equipment () {
             return util.remap($.equipmentSlot, (entry) => {
@@ -312,13 +324,13 @@ export function wrapper (_, $) {
                return {
                   get: () => {
                      if (alive) {
-                        return instance.getEquipment()[`get${pascal}`]();
+                        return $(instance.getEquipment()[`get${pascal}`]());
                      }
                   },
                   set: (value) => {
                      if (alive) {
                         value || (value = null);
-                        instance.getEquipment()[`set${pascal}`]((value && value.instance && value.instance()) || value);
+                        instance.getEquipment()[`set${pascal}`]($('-', value));
                      }
                   }
                };
@@ -326,6 +338,12 @@ export function wrapper (_, $) {
          },
          set equipment (value) {
             _.keys($.equipmentSlot).forEach((key) => (instance.equipment[util.equipment[key]] = value[key]));
+         },
+         get glowing () {
+            instance.isGlowing();
+         },
+         set glowing (value) {
+            instance.setGlowing(value);
          },
          get health () {
             if (alive) {
@@ -346,21 +364,27 @@ export function wrapper (_, $) {
          set invulnerable (value) {
             instance.setInvulnerable(value);
          },
+         get item () {
+            return $(instance.getItemInHand());
+         },
+         set item (value) {
+            instance.setItemInHand($('-', value));
+         },
          get lifeform () {
-            return _.key($.entityType, instance.getType());
+            return $.entityType[instance.getType()];
          },
          set lifeform (value) {
             instance.setType($.entityType[value]);
          },
          get location () {
-            return instance.getLocation();
+            return $(instance.getLocation());
          },
          set location (value) {
             instance.teleport(value);
          },
          get mode () {
             if (player) {
-               return _.key($.gameMode, instance.getGameMode());
+               return $.gameMode[instance.getGameMode()];
             }
          },
          set mode (value) {
@@ -384,11 +408,44 @@ export function wrapper (_, $) {
                instance.setCustomNameVisible(value !== null);
             }
          },
-         get passengers () {
+         get nbt () {
+            return _.serialize(instance.getHandle().save(_.nms('NBTTagCompound')));
+         },
+         set nbt (value) {
+            instance.getHandle().load(_.parse(value));
+         },
+         /*
+         options: (key, value) => {
+            if (key === undefined) {
+               return _.object(_.entries(_.access()), (entry) => {
+                  if (typeof entry.value === 'boolean') return { [entry.key]: entry.value };
+               });
+            } else if (value === undefined) {
+               return instance[`get${_.pascal(key)}`]();
+            } else {
+               return instance[`set${_.pascal(key)}`](value);
+            }
+         },
+         */
+         options: (...args) => {},
+         get passenger () {
             return util.passengers(instance).get();
          },
-         set passengers (value) {
+         set passenger (value) {
             util.passengers(instance).set(value);
+         },
+         remove: () => {
+            if (player) {
+               instance.kickPlayer('');
+            } else {
+               instance.remove();
+            }
+         },
+         get silent () {
+            instance.isSilent();
+         },
+         set silent (value) {
+            instance.setSilent(value);
          },
          get sneaking () {
             if (player) {
@@ -400,17 +457,28 @@ export function wrapper (_, $) {
                instance.setSneaking(value);
             }
          },
-         sound: (type, options) => {},
-         get tags () {
+         sound: (noise, options) => {
+            if (player) {
+               options || (options = {});
+               instance.playSound(
+                  options.location ? $('-', options.location) : instance.getLocation(),
+                  $.sound[noise],
+                  $.soundCategory[options.category || 'master'],
+                  options.volume || 1,
+                  options.pitch || 1
+               );
+            }
+         },
+         get tag () {
             return util.tags(instance).get();
          },
-         set tags (value) {
+         set tag (value) {
             util.tags(instance).set(value);
          },
          text: (message, type, raw) => {
             if (player) {
                typeof type === 'boolean' && (raw = type);
-               raw || (message = util.color(message));
+               raw || (message = _.color(message));
                switch (type) {
                   case 'action':
                      const action = Java.type('net.md_5.bungee.api.ChatMessageType').ACTION_BAR;
@@ -438,6 +506,12 @@ export function wrapper (_, $) {
                instance.setMaxHealth(value);
             }
          },
+         get velocity () {
+            return instance.getVelocity();
+         },
+         set velocity (value) {
+            instance.setVelocity(value);
+         },
          get world () {
             return instance.getLocation().getWorld();
          },
@@ -447,230 +521,87 @@ export function wrapper (_, $) {
       };
       return entity;
    };
-}
+};
 
-export function chainer (_, $) {
-   return (...entities) => {
-      const that = {
-         attribute: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.attributes);
-            } else if (args[1] === undefined) {
-               return entities.map((entity) => entity.attributes[args[0]]);
-            } else {
-               entities.map((entity) => (entity.attributes[args[0]] = args[1]));
-               return that;
-            }
-         },
-         bar: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.bars);
-            } else if (typeof args[0] === 'string') {
-               return entities.map((entity) => {
-                  return entity.bars.filter((bar) => args[0] === bar.internal.key.split('/')[1])[0];
-               });
-            } else {
-               entities.map((entity) => {
-                  if (typeof args[0] === 'function') {
-                     args[0](entity.bars);
-                  } else {
-                     entity.bars.clear();
-                     args.forEach(entity.bars.add);
-                  }
-               });
-               return that;
-            }
-         },
-         data: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.data);
-            } else {
-               entities.map((entity) => {
-                  const data = entity.data;
-                  if (typeof args[0] === 'function') {
-                     args[0](data);
-                     entity.data = data;
-                  } else {
-                     entity.data = args[0];
-                  }
-               });
-               return that;
-            }
-         },
-         distance: (...args) => {
-            return entities.map((entity) => entity.distance(...args));
-         },
-         effect: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.effects);
-            } else if (args[1] === undefined) {
-               return entities.map((entity) => entity.effects[args[0]]);
-            } else {
-               entities.map((entity) => (entity.effects[args[0]] = { duration: args[1], amplifier: args[2] }));
-               return that;
-            }
-         },
-         equipment: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.equipment);
-            } else if (args[1] === undefined) {
-               return entities.map((entity) => entity.equipment[args[0]]);
-            } else {
-               entities.map((entity) => (entity.equipment[args[0]] = args[1]));
-               return that;
-            }
-         },
-         health: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.health);
-            } else {
-               entities.map((entity) => (entity.health = args[0]));
-               return that;
-            }
-         },
-         instance: () => {
-            return entities.map((entity) => entity.instance);
-         },
-         invulnerable: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.invulnerable);
-            } else {
-               entities.map((entity) => (entity.invulnerable = args[0]));
-               return that;
-            }
-         },
-         lifeform: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.lifeform);
-            } else {
-               entities.map((entity) => (entity.lifeform = args[0]));
-               return that;
-            }
-         },
-         location: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.location);
-            } else {
-               entities.map((entity) => (entity.location = args[0]));
-               return that;
-            }
-         },
-         mode: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.mode);
-            } else {
-               entities.map((entity) => (entity.mode = args[0]));
-               return that;
-            }
-         },
-         name: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.name);
-            } else {
-               entities.map((entity) => (entity.name = args[0]));
-               return that;
-            }
-         },
-         passenger: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.passengers);
-            } else {
-               entities.map((entity) => {
-                  if (typeof args[0] === 'function') {
-                     args[0](entity.passengers);
-                  } else {
-                     entity.passengers.clear();
-                     args.forEach(entity.passengers.add);
-                  }
-               });
-               return that;
-            }
-         },
-         player: () => {
-            return entities.map((entity) => _.player(entity.instance.getUniqueId()));
-         },
-         serialize: (...args) => {
-            return {};
-         },
-         sneaking: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.sneaking);
-            } else {
-               entities.map((entity) => (entity.sneaking = args[0]));
-               return that;
-            }
-         },
-         sound: (...args) => {
-            entities.map((entity) => entity.sound(...args));
-            return that;
-         },
-         tag: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.tags);
-            } else {
-               entities.map((entity) => {
-                  if (typeof args[0] === 'function') {
-                     args[0](entity.tags);
-                  } else {
-                     entity.tags.clear();
-                     args.forEach(entity.tags.add);
-                  }
-               });
-               return that;
-            }
-         },
-         text: (...args) => {
-            entities.map((entity) => entity.text(...args));
-            return that;
-         },
-         uuid: () => {
-            return entities.map((entity) => entity.uuid);
-         },
-         vitality: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.vitality);
-            } else {
-               entities.map((entity) => (entity.vitality = args[0]));
-               return that;
-            }
-         },
-         world: (...args) => {
-            if (args[0] === undefined) {
-               return entities.map((entity) => entity.world);
-            } else {
-               entities.map((entity) => (entity.world = args[0]));
-               return that;
-            }
-         }
-      };
-      return that;
+export const parser = (_, $) => {
+   return (input) => {
+      return $(`?${input.lifeform}`, $([ input.location ])).nbt(input.nbt);
    };
-}
+};
 
-export function parser (_, $) {}
-
-export const links = [
-   'attribute',
-   'bar',
-   'data',
-   'distance',
-   'effect',
-   'equipment',
-   'health',
-   'instance',
-   'invulnerable',
-   'lifeform',
-   'location',
-   'mode',
-   'name',
-   'passenger',
-   'player',
-   'serialize',
-   'sneaking',
-   'sound',
-   'tag',
-   'text',
-   'uuid',
-   'vitality',
-   'world'
-];
+export const chain = (_, $) => {
+   return {
+      ai: 'setter',
+      attribute: 'setterNest',
+      bar: 'lister',
+      block: 'getter',
+      collidable: 'setter',
+      data: 'appender',
+      distance: 'runner',
+      effect: 'setterNest',
+      equipment: 'setterNest',
+      glowing: 'setter',
+      health: 'setter',
+      instance: 'getter',
+      invulnerable: 'setter',
+      item: 'setter',
+      lifeform: 'setter',
+      location: 'setter',
+      mode: 'setter',
+      name: 'setter',
+      nbt: 'appender',
+      options: 'runner',
+      passenger: 'lister',
+      player: 'runner',
+      remove: 'runner',
+      serialize: (entity) => {
+         return {
+            format: 'entity',
+            lifeform: entity.lifeform,
+            location: $([ entity.location ]),
+            data: entity.nbt
+         };
+      },
+      silent: 'setter',
+      sneaking: 'setter',
+      sound: 'runner',
+      tag: 'lister',
+      text: 'runner',
+      uuid: 'getter',
+      vitality: 'setter',
+      world: 'setter'
+   };
+   /*
+   options: (...args) => {
+      if (args[0] === undefined) {
+         return entities.map((entity) => entity.options());
+      } else if (typeof args[0] === 'string') {
+         if (args[1] === undefined) {
+            return entities.map((entity) => entity.options(args[0]));
+         } else {
+            entities.map((entity) => entity.options(...args));
+            return that;
+         }
+      } else {
+         entities.map((entity) => {
+            if (typeof args[0] === 'function') {
+               args[0](entity.options());
+            } else if (typeof args[0] === 'object') {
+               _.entries(args[0]).forEach((entry) => entity.options(entry.key, entry.value));
+            } else {
+               args.forEach((arg) => entity.options(arg, !entity.options(arg)));
+            }
+         });
+         return that;
+      }
+   },
+   player: (...args) => {
+      if (typeof args[0] === 'function') {
+         entities.map((entity) => args[0](_.player(entity.instance.getUniqueId())));
+         return that;
+      } else {
+         return entities.map((entity) => _.player(entity.instance.getUniqueId()));
+      }
+   }
+   */
+};

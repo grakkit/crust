@@ -1,4 +1,5 @@
-export function wrapper (_, $) {
+export const wrapper = (_, $) => {
+   $('*blockBreak').if(true).do((event) => $(event.getBlock()).glowing(false));
    return (instance) => {
       const util = {
          key: (...args) => {
@@ -43,16 +44,16 @@ export function wrapper (_, $) {
             }
          },
          distance: (target, flat) => {
-            return _.dist(block.location, target, flat);
+            return _.dist(block.location, $('-', target), flat);
          },
          drops: (item) => {
-            const drops = instance.getDrops((item && item.instance && item.instance()) || item);
+            const drops = instance.getDrops($('-', item));
             return drops.length === 0 ? null : drops;
          },
          get facing () {
             const data = instance.getBlockData();
             if (data instanceof Java.type('org.bukkit.block.data.Directional')) {
-               return _.key($.blockFace, data.getFacing());
+               return $.blockFace[data.getFacing()];
             }
          },
          set facing (value) {
@@ -62,17 +63,44 @@ export function wrapper (_, $) {
                instance.setBlockData(data);
             }
          },
-         instance: () => {
-            return blocks.map((blocks) => blocks.instance);
+         get glowing () {
+            return !!$(`@e[type=shulker,tag=grakkit,tag=glow,tag=${instance.getLocation().hashCode()}]`).instance()[0];
+         },
+         set glowing (value) {
+            const hash = instance.getLocation().hashCode().toString();
+            const selector = `@e[type=shulker,tag=grakkit,tag=glow,tag=${hash}]`;
+            if (value === true && !$(selector).instance()[0]) {
+               $('?shulker', instance.getLocation())
+                  .tag('grakkit', 'glow', hash)
+                  .effect('invisibility', { duration: Infinity, amplifier: 1 })
+                  .ai(false)
+                  .collidable(false)
+                  .glowing(true)
+                  .invulnerable(true)
+                  .silent(true)
+                  .health(1)
+                  .vitality(1);
+            } else if (value === false) {
+               $(selector).remove();
+            }
+         },
+         get instance () {
+            return instance;
          },
          get location () {
-            return instance.getLocation();
+            return $(instance.getLocation());
          },
          get material () {
-            return _.key($.material, instance.getType());
+            return $.material[instance.getType()];
          },
          set material (value) {
             instance.setType($.material[value]);
+            if (value === 'air') {
+               $(`@e[type=shulker,tag=grakkit,tag=glow,tag=${instance.getLocation().hashCode()}]`).remove();
+            }
+         },
+         spawn: (lifeform) => {
+            return $(`?${lifeform}`, instance.getLocation());
          },
          get world () {
             return instance.getLocation().getWorld();
@@ -80,65 +108,28 @@ export function wrapper (_, $) {
       };
       return block;
    };
-}
+};
 
-export function chainer (_, $) {
-   return (...blocks) => {
-      const that = {
-         data: (...args) => {
-            if (args[0] === undefined) {
-               return blocks.map((block) => block.data);
-            } else {
-               blocks.map((block) => {
-                  const data = block.data;
-                  if (typeof args[0] === 'function') {
-                     args[0](data);
-                     block.data = data;
-                  } else {
-                     block.data = args[0];
-                  }
-               });
-               return that;
-            }
-         },
-         distance: (...args) => {
-            return blocks.map((block) => block.distance(...args));
-         },
-         drops: (...args) => {
-            return blocks.map((block) => block.drops(...args));
-         },
-         facing: (...args) => {
-            if (args[0] === undefined) {
-               return blocks.map((block) => block.facing);
-            } else {
-               blocks.map((block) => (block.facing = args[0]));
-               return that;
-            }
-         },
-         location: () => {
-            return blocks.map((block) => block.location);
-         },
-         material: (...args) => {
-            if (args[0] === undefined) {
-               return blocks.map((block) => block.material);
-            } else {
-               blocks.map((block) => (block.material = args[0]));
-               return that;
-            }
-         },
-         serialize: () => {
-            return {};
-         },
-         world: () => {
-            return blocks.map((block) => block.world);
-         }
-      };
-      return that;
+export const parser = (_, $) => {
+   return () => {
+      return {};
    };
-}
+};
 
-export function parser (_, $) {
-   return () => {};
-}
-
-export const links = [ 'data', 'distance', 'drops', 'facing', 'location', 'material', 'serialize', 'world' ];
+export const chain = (_, $) => {
+   return {
+      data: 'appender',
+      distance: 'runner',
+      drops: 'runner',
+      facing: 'setter',
+      glowing: 'setter',
+      instance: 'getter',
+      location: 'getter',
+      material: 'setter',
+      serialize: (block) => {
+         return {};
+      },
+      spawn: 'runner',
+      world: 'getter'
+   };
+};
