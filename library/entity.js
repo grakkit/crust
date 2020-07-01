@@ -16,8 +16,144 @@ export function wrapper (_, $) {
          generic_flying_speed: [ 0, 1024 ],
          zombie_spawn_reinforcements: [ 0, 1 ]
       },
+      bar: (bar) => {
+         const internal = {
+            get key () {
+               return bar.getKey().getKey();
+            },
+            get title () {
+               return bar.getTitle();
+            },
+            set title (value) {
+               bar.setTitle(value);
+            },
+            get progress () {
+               return bar.getProgress();
+            },
+            set progress (value) {
+               bar.setProgress(value);
+            },
+            get color () {
+               return $.barColor[bar.getColor()];
+            },
+            set color (value) {
+               bar.setColor($.barColor[value]);
+            },
+            get style () {
+               return $.barStyle[bar.getStyle()];
+            },
+            set style (value) {
+               bar.setStyle($.barStyle[value]);
+            },
+            get flags () {
+               return util.flags(bar).get();
+            },
+            set flags (value) {
+               util.flags(bar).set(value);
+            }
+         };
+         const that = {
+            get internal () {
+               return internal;
+            },
+            title: (value) => {
+               if (value === undefined) {
+                  return internal.title;
+               } else {
+                  internal.title = value;
+                  return that;
+               }
+            },
+            progress: (value) => {
+               if (value === undefined) {
+                  return internal.progress;
+               } else {
+                  internal.progress = value;
+                  return that;
+               }
+            },
+            color: (value) => {
+               if (value === undefined) {
+                  return internal.color;
+               } else {
+                  internal.color = value;
+                  return that;
+               }
+            },
+            style: (value) => {
+               if (value === undefined) {
+                  return internal.style;
+               } else {
+                  internal.style = value;
+                  return that;
+               }
+            },
+            flags: (...args) => {
+               if (args[0] === undefined) {
+                  return internal.flags;
+               } else {
+                  if (typeof args[0] === 'function') {
+                     args[0](internal.flags);
+                  } else {
+                     internal.flags = args;
+                  }
+                  return that;
+               }
+            }
+         };
+         return that;
+      },
+      bars: (instance) => {
+         const uuid = instance.getUniqueId().toString();
+         return _.mirror({
+            get array () {
+               return _.array(server.getBossBars())
+                  .filter((bar) => bar.getKey().getNamespace() === core.plugin.getName())
+                  .filter((bar) => bar.getKey().getKey().split('/')[0] === uuid)
+                  .map(util.bar);
+            },
+            add: (value) => {
+               const key = util.key(core.plugin, `${uuid}/${value.name}`);
+               if (!server.getBossBar(key)) {
+                  const bar = server.createBossBar(key, '', $.barColor.white, $.barStyle.solid);
+                  Object.assign(util.bar(bar), {
+                     title: value.title || '',
+                     progress: value.progress || 0,
+                     color: value.color || 'white',
+                     style: value.style || 'solid',
+                     flags: value.flags || []
+                  });
+                  bar.addPlayer(instance);
+               }
+            },
+            delete: (value) => {
+               const bar = server.getBossBar(util.key(core.plugin, `${uuid}/${value.internal.name}`));
+               if (bar) {
+                  bar.removePlayer(instance);
+                  server.removeBossBar(bar.getKey());
+               }
+            },
+            clear: () => {
+               _.array(server.getBossBars())
+                  .filter((bar) => bar.getKey().getNamespace() === core.plugin.getName())
+                  .filter((bar) => bar.getKey().getKey().split('/')[0] === uuid)
+                  .forEach((bar) => {
+                     bar.removePlayer(instance);
+                     server.removeBossBar(bar.getKey());
+                  });
+            }
+         });
+      },
       color: (text) => {
          return text.replace(/(&)/g, '§').replace(/(§§)/g, '&');
+      },
+      key: (...args) => {
+         return new (Java.type('org.bukkit.NamespacedKey'))(...args);
+      },
+      remap: (source, consumer) => {
+         return _.define(source, (entry) => {
+            if (entry.key === _.lower(entry.key)) return consumer(entry);
+         });
       },
       equipment: {
          chest: 'chestplate',
@@ -27,16 +163,34 @@ export function wrapper (_, $) {
          legs: 'leggings',
          off_hand: 'itemInOffHand'
       },
+      flags: (bar) => {
+         return _.mirror({
+            get array () {
+               const output = [];
+               util.remap($.barFlag, (entry) => bar.hasFlag(entry.value) && output.push(entry.key));
+               return output;
+            },
+            add: (value) => {
+               bar.addFlag($.barFlag[value]);
+            },
+            remove: (value) => {
+               bar.removeFlag($.barFlag[value]);
+            },
+            clear: () => {
+               util.remap($.barFlag, (entry) => bar.removeFlag(entry.value));
+            }
+         });
+      },
       passengers: (instance) => {
          return _.mirror({
             get array () {
                return _.array(instance.getPassengers());
             },
             add: (value) => {
-               instance.addPassenger(value);
+               instance.addPassenger((value && value.instance && value.instance()) || value);
             },
             delete: (value) => {
-               instance.removePassenger(value);
+               instance.removePassenger((value && value.instance && value.instance()) || value);
             },
             clear: () => {
                instance.eject();
@@ -66,7 +220,7 @@ export function wrapper (_, $) {
       const player = instance instanceof Java.type('org.bukkit.entity.Player');
       const entity = {
          get attributes () {
-            return _.define($.attribute, (entry) => {
+            return util.remap($.attribute, (entry) => {
                if (attributable) {
                   const attribute = instance.getAttribute(entry.value);
                   if (attribute) {
@@ -86,33 +240,46 @@ export function wrapper (_, $) {
          set attributes (value) {
             _.keys($.attribute).forEach((key) => (entity.attributes[key] = value[key]));
          },
+         get bars () {
+            return util.bars(instance).get();
+         },
+         set bars (value) {
+            util.bars(instance).set(value);
+         },
          get data () {
             const container = instance.getPersistentDataContainer();
             return _.object(_.array(container.getRaw().entrySet()), (entry) => {
-               const directory = new org.bukkit.NamespacedKey(...entry.getKey().split(':'));
-               if (directory.getNamespace() === 'grakkit') {
-                  return { [`${directory.getKey()}`]: _.base.decode(entry.getValue().asString()) };
+               const directory = util.key(...entry.getKey().split(':'));
+               if (directory.getNamespace() === core.plugin.getName()) {
+                  let value = _.base.decode(entry.getValue().asString());
+                  try {
+                     return { [`${directory.getKey()}`]: JSON.parse(value) };
+                  } catch (error) {
+                     return { [`${directory.getKey()}`]: value };
+                  }
                }
             });
          },
          set data (value) {
             const container = instance.getPersistentDataContainer();
             _.array(container.getRaw().entrySet()).forEach((entry) => {
-               container.remove(new org.bukkit.NamespacedKey(...entry.getKey().split(':')));
+               if (value.getNamespace() === core.plugin.getName()) {
+                  container.remove(util.key(core.plugin, entry.getKey().getKey()));
+               }
             });
             _.entries(value).forEach((entry) => {
                container.set(
-                  new org.bukkit.NamespacedKey('grakkit', entry.key),
+                  util.key(core.plugin, entry.key),
                   org.bukkit.persistence.PersistentDataType.STRING,
-                  _.base.encode(entry.value)
+                  _.base.encode(JSON.stringify(core.serialize(entry.value)))
                );
             });
          },
          distance: (target, flat) => {
-            _.dist(entity.location(), target, flat);
+            return _.dist(entity.location, target, flat);
          },
          get effects () {
-            return _.define($.peType, (entry) => {
+            return util.remap($.peType, (entry) => {
                return {
                   get: () => {
                      if (alive) {
@@ -139,7 +306,7 @@ export function wrapper (_, $) {
             _.keys($.peType).forEach((key) => (entity.effects[key] = value[key]));
          },
          get equipment () {
-            return _.define($.equipmentSlot, (entry) => {
+            return util.remap($.equipmentSlot, (entry) => {
                const slot = util.equipment[entry.key];
                const pascal = _.pascal(slot);
                return {
@@ -151,7 +318,7 @@ export function wrapper (_, $) {
                   set: (value) => {
                      if (alive) {
                         value || (value = null);
-                        instance.getEquipment()[`set${pascal}`](value);
+                        instance.getEquipment()[`set${pascal}`]((value && value.instance && value.instance()) || value);
                      }
                   }
                };
@@ -270,6 +437,12 @@ export function wrapper (_, $) {
             if (alive) {
                instance.setMaxHealth(value);
             }
+         },
+         get world () {
+            return instance.getLocation().getWorld();
+         },
+         set world (world) {
+            instance.teleport(world.getSpawnLocation());
          }
       };
       return entity;
@@ -286,6 +459,25 @@ export function chainer (_, $) {
                return entities.map((entity) => entity.attributes[args[0]]);
             } else {
                entities.map((entity) => (entity.attributes[args[0]] = args[1]));
+               return that;
+            }
+         },
+         bar: (...args) => {
+            if (args[0] === undefined) {
+               return entities.map((entity) => entity.bars);
+            } else if (typeof args[0] === 'string') {
+               return entities.map((entity) => {
+                  return entity.bars.filter((bar) => args[0] === bar.internal.key.split('/')[1])[0];
+               });
+            } else {
+               entities.map((entity) => {
+                  if (typeof args[0] === 'function') {
+                     args[0](entity.bars);
+                  } else {
+                     entity.bars.clear();
+                     args.forEach(entity.bars.add);
+                  }
+               });
                return that;
             }
          },
@@ -394,6 +586,9 @@ export function chainer (_, $) {
                return that;
             }
          },
+         player: () => {
+            return entities.map((entity) => _.player(entity.instance.getUniqueId()));
+         },
          serialize: (...args) => {
             return {};
          },
@@ -456,6 +651,7 @@ export function parser (_, $) {}
 
 export const links = [
    'attribute',
+   'bar',
    'data',
    'distance',
    'effect',
@@ -468,6 +664,7 @@ export const links = [
    'mode',
    'name',
    'passenger',
+   'player',
    'serialize',
    'sneaking',
    'sound',

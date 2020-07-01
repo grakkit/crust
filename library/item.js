@@ -40,24 +40,117 @@ export function wrapper (_, $) {
             }
          });
       },
+      key: (...args) => {
+         return new (Java.type('org.bukkit.NamespacedKey'))(...args);
+      },
       modifier: {
-         parse: (data) => {
+         parse: (modifier) => {
             return new org.bukkit.attribute.AttributeModifier(
-               _.uuid(data.uuid),
-               '',
-               data.amount,
-               util.operation[data.operation],
-               $.equipmentSlot[data.slot] || null
+               _.uuid(modifier.uuid),
+               modifier.name || '',
+               modifier.amount || 0,
+               $.amOperation[modifier.operation || 'add_number'],
+               $.equipmentSlot[modifier.slot] || null
             );
          },
-         serialize: (data) => {
-            return {
-               amount: data.getAmount(),
-               operation: _.key(util.operation, data.getOperation()),
-               slot: data.slot ? _.key($.equipmentSlot, data.getSlot()) : null,
-               uuid: `${data.getUniqueId()}`
+         serialize: (instance, meta, attribute, modifier) => {
+            const uuid = modifier.getUniqueId().toString();
+            const update = (key, value) => {
+               meta.removeAttributeModifier(attribute, util.modifier.parse({ uuid: uuid }));
+               modifier = util.modifier.parse(Object.assign({}, internal, { [key]: value }));
+               meta.addAttributeModifier(attribute, modifier);
+               instance.setItemMeta(meta);
             };
+            const internal = {
+               get uuid () {
+                  return uuid;
+               },
+               get amount () {
+                  return modifier.getAmount();
+               },
+               set amount (value) {
+                  update('amount', value);
+               },
+               get name () {
+                  return modifier.getName();
+               },
+               set name (value) {
+                  update('name', value);
+               },
+               get operation () {
+                  return $.amOperation[modifier.getOperation()];
+               },
+               set operation (value) {
+                  update('operation', value);
+               },
+               get slot () {
+                  return $.equipmentSlot[modifier.getSlot()];
+               },
+               set slot (value) {
+                  update('slot', value);
+               }
+            };
+            const that = {
+               get internal () {
+                  return internal;
+               },
+               amount: (value) => {
+                  if (value === undefined) {
+                     return internal.amount;
+                  } else {
+                     internal.amount = value;
+                     return that;
+                  }
+               },
+               name: (value) => {
+                  if (value === undefined) {
+                     return internal.name;
+                  } else {
+                     internal.name = value;
+                     return that;
+                  }
+               },
+               operation: (value) => {
+                  if (value === undefined) {
+                     return internal.operation;
+                  } else {
+                     internal.operation = value;
+                     return that;
+                  }
+               },
+               slot: (value) => {
+                  if (value === undefined) {
+                     return internal.slot;
+                  } else {
+                     internal.slot = value;
+                     return that;
+                  }
+               }
+            };
+            return that;
          }
+      },
+      modifiers: (instance, meta, attribute) => {
+         return _.mirror({
+            get array () {
+               const modifiers = meta.hasAttributeModifiers() && meta.getAttributeModifiers(attribute);
+               return [ ..._.array(modifiers || []) ].map((modifier) => {
+                  return Object.assign(util.modifier.serialize(instance, meta, attribute, modifier));
+               });
+            },
+            add: (modifier) => {
+               meta.addAttributeModifier(attribute, util.modifier.parse(modifier));
+               instance.setItemMeta(meta);
+            },
+            remove: (modifier) => {
+               meta.removeAttributeModifier(attribute, util.modifier.parse({ uuid: modifier.internal.uuid }));
+               instance.setItemMeta(meta);
+            },
+            clear: () => {
+               meta.removeAttributeModifier(attribute);
+               instance.setItemMeta(meta);
+            }
+         });
       },
       nbt: {
          parse: (data) => {
@@ -129,10 +222,10 @@ export function wrapper (_, $) {
          const type = Java.type(`net.minecraft.server.${`${server.getClass()}`.split('.')[3]}.${property}`);
          return new type(..._.flat(args));
       },
-      operation: {
-         add: $.amOperation.add_number,
-         multiply_base: $.amOperation.add_scalar,
-         multiply: $.amOperation.multiply_scalar_1
+      remap: (source, consumer) => {
+         return _.define(source, (entry) => {
+            if (entry.key === _.lower(entry.key)) return consumer(entry);
+         });
       }
    };
    return (instance) => {
@@ -146,27 +239,8 @@ export function wrapper (_, $) {
          get attributes () {
             const meta = instance.getItemMeta();
             if (meta) {
-               return _.define($.attribute, (entry) => {
-                  return _.mirror({
-                     get array () {
-                        const modifiers = meta.hasAttributeModifiers() && meta.getAttributeModifiers(entry.value);
-                        return [ ..._.array(modifiers || []) ].map((modifier) => {
-                           return util.modifier.serialize(modifier);
-                        });
-                     },
-                     add: (modifier) => {
-                        meta.addAttributeModifier(entry.value, util.modifier.parse(modifier));
-                        instance.setItemMeta(meta);
-                     },
-                     remove: (modifier) => {
-                        meta.removeAttributeModifier(entry.value, util.modifier.parse(modifier));
-                        instance.setItemMeta(meta);
-                     },
-                     clear: () => {
-                        meta.removeAttributeModifier(entry.value);
-                        instance.setItemMeta(meta);
-                     }
-                  });
+               return util.remap($.attribute, (entry) => {
+                  return util.modifiers(instance, meta, entry.value);
                });
             }
          },
@@ -194,9 +268,14 @@ export function wrapper (_, $) {
             if (meta) {
                const container = meta.getPersistentDataContainer();
                return _.object(_.array(container.getRaw().entrySet()), (entry) => {
-                  const directory = new org.bukkit.NamespacedKey(...entry.getKey().split(':'));
-                  if (directory.getNamespace() === 'grakkit') {
-                     return { [`${directory.getKey()}`]: _.base.decode(entry.getValue().asString()) };
+                  const directory = util.key(...entry.getKey().split(':'));
+                  if (directory.getNamespace() === core.plugin.getName()) {
+                     let value = _.base.decode(entry.getValue().asString());
+                     try {
+                        return { [`${directory.getKey()}`]: JSON.parse(value) };
+                     } catch (error) {
+                        return { [`${directory.getKey()}`]: value };
+                     }
                   }
                });
             }
@@ -206,13 +285,15 @@ export function wrapper (_, $) {
             if (meta) {
                const container = meta.getPersistentDataContainer();
                _.array(container.getRaw().entrySet()).forEach((entry) => {
-                  container.remove(new org.bukkit.NamespacedKey(...entry.getKey().split(':')));
+                  if (value.getNamespace() === core.plugin.getName()) {
+                     container.remove(util.key(core.plugin, entry.getKey().getKey()));
+                  }
                });
                _.entries(value).forEach((entry) => {
                   container.set(
-                     new org.bukkit.NamespacedKey('grakkit', entry.key),
+                     util.key(core.plugin, entry.key),
                      org.bukkit.persistence.PersistentDataType.STRING,
-                     _.base.encode(entry.value)
+                     _.base.encode(JSON.stringify(core.serialize(entry.value)))
                   );
                });
                instance.setItemMeta(meta);
@@ -230,10 +311,13 @@ export function wrapper (_, $) {
                util.adventure(instance, meta, 'destroy').set(value);
             }
          },
+         drop: (location, naturally) => {
+            location.getWorld()[`dropItem${naturally ? 'Naturally' : ''}`](location, instance);
+         },
          get enchantments () {
             const meta = instance.getItemMeta();
             if (meta) {
-               return _.define($.enchantment, (entry) => {
+               return util.remap($.enchantment, (entry) => {
                   return {
                      get: () => {
                         if (item.material === 'enchanted_book') return meta.getStoredEnchantLevel(entry.value);
@@ -347,21 +431,6 @@ export function wrapper (_, $) {
 }
 
 export function chainer (_, $) {
-   const util = {
-      modifiers: (set) => {
-         return {
-            clear: () => {
-               set.clear();
-            },
-            add: (amount, operation, slot) => {
-               set.add({ amount: amount, operation: operation || 'add_number', slot: slot });
-            },
-            remove: (index) => {
-               set.remove(modifiers[index]);
-            }
-         };
-      }
-   };
    return (...items) => {
       const that = {
          amount: (...args) => {
@@ -379,12 +448,11 @@ export function chainer (_, $) {
                return items.map((item) => item.attributes[args[0]]);
             } else {
                items.map((item) => {
-                  const modifiers = util.modifiers(item.attributes[args[0]]);
                   if (typeof args[1] === 'function') {
-                     args[1](modifiers);
+                     args[1](item.attributes[args[0]]);
                   } else {
-                     modifiers.clear();
-                     args.slice(1).forEach((arg) => modifiers.add(...arg));
+                     item.attributes[args[0]].clear();
+                     args.slice(1).forEach(item.attributes[args[0]].add);
                   }
                });
                return that;
@@ -428,6 +496,9 @@ export function chainer (_, $) {
                });
                return that;
             }
+         },
+         drop: (...args) => {
+            return items.map((item) => item.drop(...args));
          },
          enchantment: (...args) => {
             if (args[0] === undefined) {
@@ -550,6 +621,7 @@ export const links = [
    'damage',
    'data',
    'destroy',
+   'drop',
    'enchantment',
    'flag',
    'instance',

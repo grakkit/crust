@@ -1,54 +1,4 @@
-const framework = core.import('grakkit/framework');
-
-const API = framework.object(
-   framework.entries({
-      action: {
-         source: Java.type('org.bukkit.event.block.Action')
-      },
-      attribute: {
-         source: Java.type('org.bukkit.attribute.Attribute')
-      },
-      amOperation: {
-         source: Java.type('org.bukkit.attribute.AttributeModifier.Operation')
-      },
-      blockFace: {
-         source: Java.type('org.bukkit.block.BlockFace')
-      },
-      enchantment: {
-         source: Java.type('org.bukkit.enchantments.Enchantment'),
-         consumer: (value) => value.getKey().getKey()
-      },
-      entityType: {
-         source: Java.type('org.bukkit.entity.EntityType'),
-         consumer: (value) => (value.name() === 'UNKNOWN' ? undefined : value.getKey().getKey())
-      },
-      equipmentSlot: {
-         source: Java.type('org.bukkit.inventory.EquipmentSlot')
-      },
-      gameMode: {
-         source: Java.type('org.bukkit.GameMode')
-      },
-      itemFlag: {
-         source: Java.type('org.bukkit.inventory.ItemFlag')
-      },
-      material: {
-         source: Java.type('org.bukkit.Material'),
-         consumer: (value) => (value.isLegacy() ? undefined : value.getKey().getKey())
-      },
-      peType: {
-         source: Java.type('org.bukkit.potion.PotionEffectType'),
-         consumer: (value) => value.getHandle().c().split('.')[2]
-      }
-   }),
-   (entry) => {
-      return {
-         [entry.key]: framework.object(framework.array(entry.value.source.values()), (value) => {
-            const consumer = entry.value.consumer || ((value) => value.name().toLowerCase());
-            return { [consumer(value)]: value };
-         })
-      };
-   }
-);
+const _ = core.import('grakkit/framework');
 
 const command = {
    on: (name) => {
@@ -81,7 +31,7 @@ const event = {
          prefixes.push(...event.prefixes[index++]);
       }
       let type = undefined;
-      const suffix = `${framework.pascal(shortcut)}Event`;
+      const suffix = `${_.pascal(shortcut)}Event`;
       prefixes.forEach((prefix) => {
          if (type === undefined) {
             try {
@@ -93,40 +43,51 @@ const event = {
       if (type === undefined) {
          throw 'EventError: That event does not exist!';
       } else {
-         const conditions = [];
-         const listeners = [];
+         const steps = [];
          const that = {
             if: (condition) => {
-               conditions.push(condition);
+               steps.push({ type: 'condition', item: condition });
                return that;
             },
             do: (listener) => {
-               listeners.push(listener);
+               steps.push({ type: 'listener', item: listener });
                return that;
             }
          };
-         core.event(type, (...args) => {
-            listeners.forEach((listener) => {
+         core.event(type, (event) => {
+            if (event instanceof Java.type(type)) {
+               const storage = {};
+               const cancellable = event instanceof Java.type('org.bukkit.event.Cancellable');
                let ready = true;
-               conditions.forEach((condition) => {
-                  const event = framework.access(args[0]);
-                  const cancellable = args[0] instanceof Java.type('org.bukkit.event.Cancellable');
-                  switch (typeof condition) {
-                     case 'boolean':
-                        if (cancellable && condition === args[0].isCancelled()) ready = false;
+               steps.forEach((step) => {
+                  switch (step.type) {
+                     case 'condition':
+                        switch (typeof step.item) {
+                           case 'boolean':
+                              if (cancellable && step.item === event.isCancelled()) ready = false;
+                              break;
+                           case 'function':
+                              if (!step.item(event, storage)) ready = false;
+                              break;
+                           case 'object':
+                              if (!_.match(_.access(event), step.item)) ready = false;
+                              break;
+                        }
                         break;
-                     case 'function':
-                        if (!condition(...args)) ready = false;
-                        break;
-                     case 'object':
-                        if (!framework.match(event, condition)) ready = false;
+                     case 'listener':
+                        if (ready) {
+                           try {
+                              step.item(event, storage);
+                           } catch (error) {
+                              // note: do something better here
+                              ready = false;
+                              throw error;
+                           }
+                        }
                         break;
                   }
                });
-               if (ready) {
-                  listener(...args);
-               }
-            });
+            }
          });
          return that;
       }
@@ -182,17 +143,44 @@ const $ = (object, ...args) => {
             const suffix = object.slice(1);
             switch (prefix) {
                case '~':
-                  return eval(suffix);
+                  if ($[suffix]) {
+                     return $[suffix];
+                  } else {
+                     $[suffix] = _.object(_.array(Java.type(suffix).values()), (value) => {
+                        if (!args[0] || !args[0](value)) {
+                           let name = '';
+                           if (args[1]) name = args[1](value);
+                           else if (typeof value.getKey === 'function') name = value.getKey().getKey();
+                           else name = _.lower(value.name());
+                           return { [name]: value, [value]: name };
+                        }
+                     });
+                     const words = [];
+                     let index = -1;
+                     suffix.split('.').forEach((node) => {
+                        node.split('').map((char) => {
+                           if (char === _.upper(char)) words[++index] = char;
+                           else if (words[index]) words[index] += char;
+                        });
+                        ++index;
+                     });
+                     const terms = _.flat(words);
+                     let key = '';
+                     if (terms.length < 3) key = _.camel(terms.join(' '), ' ');
+                     else if (terms.length === 3) key = _.lower(terms[0][0] + terms[1][0]) + terms[2];
+                     else key = _.lower(terms.slice(0, -2).map((term) => term[0]).join('')) + terms.slice(-2).join('');
+                     return ($[key] = $[suffix]);
+                  }
                case '!':
-                  const item = new (Java.type('org.bukkit.inventory.ItemStack'))(API.material[suffix]);
+                  const item = new (Java.type('org.bukkit.inventory.ItemStack'))($.material[suffix]);
                   return one('item', item.ensureServerConversions());
                case '@':
                   const context = args[0] || server.getConsoleSender();
-                  return all('entity', ...framework.array(server.selectEntities(context, object)));
+                  return all('entity', ..._.array(server.selectEntities(context, object)));
                case '#':
                   return core.data(suffix, args[0]);
                case '?':
-                  return one('entity', args[0].world.spawnEntity(args[0], API.entityType[suffix]));
+                  return one('entity', args[0].world.spawnEntity(args[0], $.entityType[suffix]));
                case '*':
                   return event.on(suffix);
                case '/':
@@ -224,28 +212,45 @@ const $ = (object, ...args) => {
    }
 };
 
-Object.assign($, API);
+$('~org.bukkit.Material', (value) => value.isLegacy());
+$('~org.bukkit.entity.EntityType', (value) => value.name() === 'UNKNOWN');
 
 import * as block from './library/block.min.js';
+
+$('~org.bukkit.block.BlockFace');
+
 import * as entity from './library/entity.min.js';
+
+$('~org.bukkit.GameMode');
+$('~org.bukkit.boss.BarFlag');
+$('~org.bukkit.boss.BarColor');
+$('~org.bukkit.boss.BarStyle');
+$('~org.bukkit.attribute.Attribute', null, (value) => value.getKey().getKey().split('.')[1]);
+$('~org.bukkit.inventory.EquipmentSlot');
+$('~org.bukkit.potion.PotionEffectType', null, (value) => value.getHandle().c().split('.')[2]);
+
 import * as item from './library/item.min.js';
 
+$('~org.bukkit.inventory.ItemFlag');
+$('~org.bukkit.enchantments.Enchantment');
+$('~org.bukkit.attribute.AttributeModifier.Operation');
+
 const wrappers = {
-   block: block.wrapper(framework, $),
-   entity: entity.wrapper(framework, $),
-   item: item.wrapper(framework, $)
+   block: block.wrapper(_, $),
+   entity: entity.wrapper(_, $),
+   item: item.wrapper(_, $)
 };
 
 const chainers = {
-   block: block.chainer(framework, $),
-   entity: entity.chainer(framework, $),
-   item: item.chainer(framework, $)
+   block: block.chainer(_, $),
+   entity: entity.chainer(_, $),
+   item: item.chainer(_, $)
 };
 
 const parsers = {
-   block: block.parser(framework, $),
-   entity: entity.parser(framework, $),
-   item: item.parser(framework, $)
+   block: block.parser(_, $),
+   entity: entity.parser(_, $),
+   item: item.parser(_, $)
 };
 
 const links = {
@@ -256,7 +261,7 @@ const links = {
 
 const one = (type, instance) => {
    const that = chainers[type](wrappers[type](instance));
-   const output = framework.object(links[type], (link) => {
+   const output = _.object(links[type], (link) => {
       return {
          [link]: (...args) => {
             const result = that[link](...args);
@@ -269,7 +274,7 @@ const one = (type, instance) => {
 
 const all = (type, ...instances) => {
    const that = chainers[type](...instances.map((instance) => wrappers[type](instance)));
-   return framework.extend(
+   return _.extend(
       that,
       ...Object.getOwnPropertyNames(Array.prototype).map((key) => {
          const value = Array.prototype[key];
