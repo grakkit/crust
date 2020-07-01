@@ -1,3 +1,5 @@
+const Location = Java.type('org.bukkit.Location');
+
 export const wrapper = (_, $) => {
    return (instance) => {
       const location = {
@@ -68,7 +70,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (location) => {
-      return new (Java.type('org.bukkit.Location'))(
+      return new Location(
          server.getWorld(_.uuid(location.world)),
          location.x,
          location.y,

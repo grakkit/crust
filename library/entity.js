@@ -1,6 +1,15 @@
+const Player = Java.type('org.bukkit.entity.Player');
+const LivingEntity = Java.type('org.bukkit.entity.LivingEntity');
+const Attributable = Java.type('org.bukkit.attribute.Attributable');
+const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
+const ChatMessageType = Java.type('net.md_5.bungee.api.ChatMessageType');
+const TextComponent = Java.type('net.md_5.bungee.api.chat.TextComponent');
+const PersistentDataType = Java.type('org.bukkit.persistence.PersistentDataType');
+
 export const wrapper = (_, $) => {
+   const NBTTagCompound = _.nms.NBTTagCompound;
    const util = {
-      attributable: Java.type('org.bukkit.attribute.Attributable'),
+      attributable: Attributable,
       attribute: {
          max_health: [ 0, 1024 ],
          follow_range: [ 0, 2048 ],
@@ -113,7 +122,7 @@ export const wrapper = (_, $) => {
                   .map(util.bar);
             },
             add: (value) => {
-               const key = util.key(core.plugin, `${uuid}/${value.name}`);
+               const key = new NamespacedKey(core.plugin, `${uuid}/${value.name}`);
                if (!server.getBossBar(key)) {
                   const bar = server.createBossBar(key, '', $.barColor.white, $.barStyle.solid);
                   Object.assign(util.bar(bar), {
@@ -127,7 +136,7 @@ export const wrapper = (_, $) => {
                }
             },
             delete: (value) => {
-               const bar = server.getBossBar(util.key(core.plugin, `${uuid}/${value.internal.name}`));
+               const bar = server.getBossBar(new NamespacedKey(core.plugin, `${uuid}/${value.internal.name}`));
                if (bar) {
                   bar.removePlayer(instance);
                   server.removeBossBar(bar.getKey());
@@ -143,9 +152,6 @@ export const wrapper = (_, $) => {
                   });
             }
          });
-      },
-      key: (...args) => {
-         return new (Java.type('org.bukkit.NamespacedKey'))(...args);
       },
       remap: (source, consumer) => {
          return _.define(source, (entry) => {
@@ -212,9 +218,9 @@ export const wrapper = (_, $) => {
       }
    };
    return (instance) => {
-      const alive = instance instanceof Java.type('org.bukkit.entity.LivingEntity');
-      const attributable = instance instanceof Java.type('org.bukkit.attribute.Attributable');
-      const player = instance instanceof Java.type('org.bukkit.entity.Player');
+      const alive = instance instanceof LivingEntity;
+      const attributable = instance instanceof Attributable;
+      const player = instance instanceof Player;
       const entity = {
          get ai () {
             instance.hasAI();
@@ -261,7 +267,7 @@ export const wrapper = (_, $) => {
          get data () {
             const container = instance.getPersistentDataContainer();
             return _.object(_.array(container.getRaw().entrySet()), (entry) => {
-               const directory = util.key(...entry.getKey().split(':'));
+               const directory = new NamespacedKey(...entry.getKey().split(':'));
                if (directory.getNamespace() === core.plugin.getName()) {
                   let value = _.base.decode(entry.getValue().asString());
                   try {
@@ -276,13 +282,13 @@ export const wrapper = (_, $) => {
             const container = instance.getPersistentDataContainer();
             _.array(container.getRaw().entrySet()).forEach((entry) => {
                if (entry.getKey().split(':')[1] === core.plugin.getName()) {
-                  container.remove(util.key(core.plugin, entry.getKey().getKey()));
+                  container.remove(new NamespacedKey(core.plugin, entry.getKey().getKey()));
                }
             });
             _.entries(value).forEach((entry) => {
                container.set(
-                  util.key(core.plugin, entry.key),
-                  org.bukkit.persistence.PersistentDataType.STRING,
+                  new NamespacedKey(core.plugin, entry.key),
+                  PersistentDataType.STRING,
                   _.base.encode(JSON.stringify(core.serialize(entry.value)))
                );
             });
@@ -409,7 +415,7 @@ export const wrapper = (_, $) => {
             }
          },
          get nbt () {
-            return _.serialize(instance.getHandle().save(_.nms('NBTTagCompound')));
+            return _.serialize(instance.getHandle().save(NBTTagCompound));
          },
          set nbt (value) {
             instance.getHandle().load(_.parse(value));
@@ -481,9 +487,7 @@ export const wrapper = (_, $) => {
                raw || (message = _.color(message));
                switch (type) {
                   case 'action':
-                     const action = Java.type('net.md_5.bungee.api.ChatMessageType').ACTION_BAR;
-                     const component = Java.type('net.md_5.bungee.api.chat.TextComponent');
-                     instance.sendMessage(action, new component(message));
+                     instance.sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(message));
                      break;
                   case 'title':
                      break;
@@ -507,7 +511,7 @@ export const wrapper = (_, $) => {
             }
          },
          get velocity () {
-            return instance.getVelocity();
+            return $(instance.getVelocity());
          },
          set velocity (value) {
             instance.setVelocity(value);
@@ -568,6 +572,7 @@ export const chain = (_, $) => {
       tag: 'lister',
       text: 'runner',
       uuid: 'getter',
+      velocity: 'setter',
       vitality: 'setter',
       world: 'setter'
    };

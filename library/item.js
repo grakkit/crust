@@ -1,3 +1,7 @@
+const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
+const AttributeModifier = Java.type('org.bukkit.attribute.AttributeModifier');
+const PersistentDataType = Java.type('org.bukkit.persistence.PersistentDataType');
+
 export const wrapper = (_, $) => {
    const util = {
       adventure: (instance, meta, type) => {
@@ -40,12 +44,9 @@ export const wrapper = (_, $) => {
             }
          });
       },
-      key: (...args) => {
-         return new (Java.type('org.bukkit.NamespacedKey'))(...args);
-      },
       modifier: {
          parse: (modifier) => {
-            return new org.bukkit.attribute.AttributeModifier(
+            return new AttributeModifier(
                _.uuid(modifier.uuid),
                modifier.name || '',
                modifier.amount || 0,
@@ -198,7 +199,7 @@ export const wrapper = (_, $) => {
             if (meta) {
                const container = meta.getPersistentDataContainer();
                return _.object(_.array(container.getRaw().entrySet()), (entry) => {
-                  const directory = util.key(...entry.getKey().split(':'));
+                  const directory = new NamespacedKey(...entry.getKey().split(':'));
                   if (directory.getNamespace() === core.plugin.getName()) {
                      let value = _.base.decode(entry.getValue().asString());
                      try {
@@ -216,13 +217,13 @@ export const wrapper = (_, $) => {
                const container = meta.getPersistentDataContainer();
                _.array(container.getRaw().entrySet()).forEach((entry) => {
                   if (entry.getKey().split(':')[1] === core.plugin.getName()) {
-                     container.remove(util.key(core.plugin, entry.getKey().getKey()));
+                     container.remove(new NamespacedKey(core.plugin, entry.getKey().getKey()));
                   }
                });
                _.entries(value).forEach((entry) => {
                   container.set(
-                     util.key(core.plugin, entry.key),
-                     org.bukkit.persistence.PersistentDataType.STRING,
+                     new NamespacedKey(core.plugin, entry.key),
+                     PersistentDataType.STRING,
                      _.base.encode(JSON.stringify(core.serialize(entry.value)))
                   );
                });

@@ -2,7 +2,14 @@ import * as block from './library/block.min.js';
 import * as entity from './library/entity.min.js';
 import * as item from './library/item.min.js';
 import * as location from './library/location.min.js';
+import * as vector from './library/vector.min.js';
 import * as tools from './library/tools.min.js';
+
+const Block = Java.type('org.bukkit.block.Block');
+const Vector = Java.type('org.bukkit.inventory.Vector');
+const Entity = Java.type('org.bukkit.entity.Entity');
+const Location = Java.type('org.bukkit.Location');
+const ItemStack = Java.type('org.bukkit.inventory.ItemStack');
 
 const _ = core.import('grakkit/framework');
 const $ = (object, ...args) => {
@@ -44,7 +51,7 @@ const $ = (object, ...args) => {
                      return ($[key] = $[suffix]);
                   }
                case '!':
-                  const item = new (Java.type('org.bukkit.inventory.ItemStack'))($.material[suffix]);
+                  const item = ItemStack($.material[suffix]);
                   return one('item', item.ensureServerConversions());
                case '@':
                   const context = args[0] || server.getConsoleSender();
@@ -80,14 +87,16 @@ const $ = (object, ...args) => {
                   return _.player(object);
             }
          case 'object':
-            if (object instanceof Java.type('org.bukkit.block.Block')) {
+            if (object instanceof Block) {
                return one('block', object);
-            } else if (object instanceof Java.type('org.bukkit.entity.Entity')) {
+            } else if (object instanceof Entity) {
                return one('entity', object);
-            } else if (object instanceof Java.type('org.bukkit.inventory.ItemStack')) {
+            } else if (object instanceof ItemStack) {
                return one('item', object);
-            } else if (object instanceof Java.type('org.bukkit.Location')) {
+            } else if (object instanceof Location) {
                return one('location', object);
+            } else if (object instanceof Vector) {
+               return one('vector', object);
             } else if (object.constructor === Array) {
                const thing = $('-', object[0]);
                if ([ null, undefined ].includes(thing)) {
@@ -128,7 +137,8 @@ const jx = {
    block: builder(block),
    entity: builder(entity),
    item: builder(item),
-   location: builder(location)
+   location: builder(location),
+   vector: builder(vector)
 };
 
 const one = (type, instance) => {

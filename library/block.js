@@ -1,18 +1,18 @@
+const TileState = Java.type('org.bukkit.block.TileState');
+const Directional = Java.type('org.bukkit.block.data.Directional');
+const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
+const PersistentDataType = Java.type('org.bukkit.persistence.PersistentDataType');
+
 export const wrapper = (_, $) => {
    $('*blockBreak').if(true).do((event) => $(event.getBlock()).glowing(false));
    return (instance) => {
-      const util = {
-         key: (...args) => {
-            return new (Java.type('org.bukkit.NamespacedKey'))(...args);
-         }
-      };
       const block = {
          get data () {
             const state = instance.getState();
-            if (state instanceof Java.type('org.bukkit.block.TileState')) {
+            if (state instanceof TileState) {
                const container = state.getPersistentDataContainer();
                return _.object(_.array(container.getRaw().entrySet()), (entry) => {
-                  const directory = util.key(...entry.getKey().split(':'));
+                  const directory = new NamespacedKey(...entry.getKey().split(':'));
                   if (directory.getNamespace() === core.plugin.getName()) {
                      let value = _.base.decode(entry.getValue().asString());
                      try {
@@ -26,17 +26,17 @@ export const wrapper = (_, $) => {
          },
          set data (value) {
             const state = instance.getState();
-            if (state instanceof Java.type('org.bukkit.block.TileState')) {
+            if (state instanceof TileState) {
                const container = state.getPersistentDataContainer();
                _.array(container.getRaw().entrySet()).forEach((entry) => {
                   if (entry.getKey().split(':')[1] === core.plugin.getName()) {
-                     container.remove(util.key(core.plugin, entry.getKey().getKey()));
+                     container.remove(new NamespacedKey(core.plugin, entry.getKey().getKey()));
                   }
                });
                _.entries(value).forEach((entry) => {
                   container.set(
-                     util.key(core.plugin, entry.key),
-                     org.bukkit.persistence.PersistentDataType.STRING,
+                     new NamespacedKey(core.plugin, entry.key),
+                     PersistentDataType.STRING,
                      _.base.encode(JSON.stringify(core.serialize(entry.value)))
                   );
                });
@@ -52,13 +52,13 @@ export const wrapper = (_, $) => {
          },
          get facing () {
             const data = instance.getBlockData();
-            if (data instanceof Java.type('org.bukkit.block.data.Directional')) {
+            if (data instanceof Directional) {
                return $.blockFace[data.getFacing()];
             }
          },
          set facing (value) {
             const data = instance.getBlockData();
-            if (data instanceof Java.type('org.bukkit.block.data.Directional')) {
+            if (data instanceof Directional) {
                data.setFacing($.blockFace[value]);
                instance.setBlockData(data);
             }

@@ -1,3 +1,5 @@
+const Cancellable = Java.type('org.bukkit.event.Cancellable');
+
 export const prefixes = [
    'org.bukkit.event.block',
    'org.bukkit.event.command',
@@ -10,25 +12,23 @@ export const prefixes = [
    'org.bukkit.event.server',
    'org.bukkit.event.vehicle',
    'org.bukkit.event.weather',
-   'org.bukkit.event.world'
+   'org.bukkit.event.world',
+   'org.spigotmc.event.entity',
+   'org.spigotmc.event.player'
 ];
 
 try {
-   Java.type('org.spigotmc.event.player.PlayerSpawnLocationEvent');
-   prefixes.push(...[ 'org.spigotmc.event.entity', 'org.spigotmc.event.player' ]);
-   try {
-      Java.type('com.destroystokyo.paper.event.player.IllegalPacketEvent');
-      prefixes.push(
-         ...[
-            'com.destroystokyo.paper.event.block',
-            'com.destroystokyo.paper.event.entity',
-            'com.destroystokyo.paper.event.executor',
-            'com.destroystokyo.paper.event.player',
-            'com.destroystokyo.paper.event.profile',
-            'com.destroystokyo.paper.event.server'
-         ]
-      );
-   } catch (error) {}
+   Java.type('com.destroystokyo.paper.event.player.IllegalPacketEvent');
+   prefixes.push(
+      ...[
+         'com.destroystokyo.paper.event.block',
+         'com.destroystokyo.paper.event.entity',
+         'com.destroystokyo.paper.event.executor',
+         'com.destroystokyo.paper.event.player',
+         'com.destroystokyo.paper.event.profile',
+         'com.destroystokyo.paper.event.server'
+      ]
+   );
 } catch (error) {}
 
 export const accessors = (that, things) => {
@@ -240,7 +240,7 @@ export const event = (_, $) => {
             core.event(type, (event) => {
                if (event instanceof Java.type(type)) {
                   const storage = {};
-                  const cancellable = event instanceof Java.type('org.bukkit.event.Cancellable');
+                  const cancellable = event instanceof Cancellable;
                   let ready = true;
                   steps.forEach((step) => {
                      switch (step.type) {
