@@ -12,9 +12,9 @@ export const wrapper = (_, $) => {
                const local = new Vector(x, y, z)
                   .rotateAroundX(location.getPitch() * Math.PI / 180)
                   .rotateAroundY(location.getYaw() * Math.PI / 180 * -1);
-               x = local.x;
-               y = local.x;
-               z = local.z;
+               x = local.getX();
+               y = local.getY();
+               z = local.getZ();
             }
             vector.x = vector.x + x;
             vector.y = vector.y + y;
@@ -63,6 +63,7 @@ export const parser = (_, $) => {
 
 export const chain = (_, $) => {
    return {
+      add: 'runner',
       instance: 'getter',
       serialize: (vector) => {
          return {

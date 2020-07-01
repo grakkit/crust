@@ -415,7 +415,7 @@ export const wrapper = (_, $) => {
             }
          },
          get nbt () {
-            return _.serialize(instance.getHandle().save(NBTTagCompound));
+            return _.serialize(instance.getHandle().save(new NBTTagCompound()));
          },
          set nbt (value) {
             instance.getHandle().load(_.parse(value));
@@ -514,7 +514,7 @@ export const wrapper = (_, $) => {
             return $(instance.getVelocity());
          },
          set velocity (value) {
-            instance.setVelocity(value);
+            instance.setVelocity($('-', value));
          },
          get world () {
             return instance.getLocation().getWorld();
