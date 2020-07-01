@@ -2,19 +2,19 @@ export function wrapper (_, $) {
    const util = {
       attributable: Java.type('org.bukkit.attribute.Attributable'),
       attribute: {
-         generic_max_health: [ 0, 1024 ],
-         generic_follow_range: [ 0, 2048 ],
-         generic_knockback_resistance: [ 0, 1 ],
-         generic_movement_speed: [ 0, 1024 ],
-         generic_attack_damage: [ 0, 2048 ],
-         generic_armor: [ 0, 30 ],
-         generic_armor_toughness: [ 0, 20 ],
-         generic_attack_knockback: [ 0, 5 ],
-         generic_attack_speed: [ 0, 1024 ],
-         generic_luck: [ -1024, 1024 ],
-         horse_jump_strength: [ 0, 2 ],
-         generic_flying_speed: [ 0, 1024 ],
-         zombie_spawn_reinforcements: [ 0, 1 ]
+         max_health: [ 0, 1024 ],
+         follow_range: [ 0, 2048 ],
+         knockback_resistance: [ 0, 1 ],
+         movement_speed: [ 0, 1024 ],
+         attack_damage: [ 0, 2048 ],
+         armor: [ 0, 30 ],
+         armor_toughness: [ 0, 20 ],
+         attack_knockback: [ 0, 5 ],
+         attack_speed: [ 0, 1024 ],
+         luck: [ -1024, 1024 ],
+         jump_strength: [ 0, 2 ],
+         flying_speed: [ 0, 1024 ],
+         spawn_reinforcements: [ 0, 1 ]
       },
       bar: (bar) => {
          const internal = {
@@ -263,7 +263,7 @@ export function wrapper (_, $) {
          set data (value) {
             const container = instance.getPersistentDataContainer();
             _.array(container.getRaw().entrySet()).forEach((entry) => {
-               if (value.getNamespace() === core.plugin.getName()) {
+               if (entry.getKey().split(':')[1] === core.plugin.getName()) {
                   container.remove(util.key(core.plugin, entry.getKey().getKey()));
                }
             });

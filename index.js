@@ -185,6 +185,8 @@ const $ = (object, ...args) => {
                   return event.on(suffix);
                case '/':
                   return command.on(suffix);
+               case '+':
+                  return all(suffix, ...args);
                default:
                   return _.player(object);
             }

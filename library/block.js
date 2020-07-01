@@ -28,7 +28,7 @@ export function wrapper (_, $) {
             if (state instanceof Java.type('org.bukkit.block.TileState')) {
                const container = state.getPersistentDataContainer();
                _.array(container.getRaw().entrySet()).forEach((entry) => {
-                  if (value.getNamespace() === core.plugin.getName()) {
+                  if (entry.getKey().split(':')[1] === core.plugin.getName()) {
                      container.remove(util.key(core.plugin, entry.getKey().getKey()));
                   }
                });

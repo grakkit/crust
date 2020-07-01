@@ -285,7 +285,7 @@ export function wrapper (_, $) {
             if (meta) {
                const container = meta.getPersistentDataContainer();
                _.array(container.getRaw().entrySet()).forEach((entry) => {
-                  if (value.getNamespace() === core.plugin.getName()) {
+                  if (entry.getKey().split(':')[1] === core.plugin.getName()) {
                      container.remove(util.key(core.plugin, entry.getKey().getKey()));
                   }
                });
