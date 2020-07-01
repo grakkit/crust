@@ -6,7 +6,7 @@ import * as vector from './library/vector.min.js';
 import * as tools from './library/tools.min.js';
 
 const Block = Java.type('org.bukkit.block.Block');
-const Vector = Java.type('org.bukkit.inventory.Vector');
+const Vector = Java.type('org.bukkit.util.Vector');
 const Entity = Java.type('org.bukkit.entity.Entity');
 const Location = Java.type('org.bukkit.Location');
 const ItemStack = Java.type('org.bukkit.inventory.ItemStack');
