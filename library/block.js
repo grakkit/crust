@@ -2,9 +2,11 @@ const TileState = Java.type('org.bukkit.block.TileState');
 const Directional = Java.type('org.bukkit.block.data.Directional');
 const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
 const PersistentDataType = Java.type('org.bukkit.persistence.PersistentDataType');
+const PersistentDataHolder = Java.type('org.bukkit.persistence.PersistentDataHolder');
 
 export const wrapper = (_, $) => {
-   $('*blockBreak').if(true).do((event) => $(event.getBlock()).glowing(false));
+   // $('*blockBreak').if(true).do((event) => $(event.getBlock()).glowing(false));
+   // $('*entityDamage').if(true).do((event) => $(event.getEntity()).block().glowing(false));
    return (instance) => {
       const block = {
          get data () {
@@ -26,7 +28,7 @@ export const wrapper = (_, $) => {
          },
          set data (value) {
             const state = instance.getState();
-            if (state instanceof TileState) {
+            if (state instanceof PersistentDataHolder) {
                const container = state.getPersistentDataContainer();
                _.array(container.getRaw().entrySet()).forEach((entry) => {
                   if (entry.getKey().split(':')[1] === core.plugin.getName()) {
@@ -44,10 +46,17 @@ export const wrapper = (_, $) => {
             }
          },
          distance: (target, flat) => {
-            return _.dist(block.location, $('-', target), flat);
+            const input = $(':standardize', target);
+            if (input) {
+               if (typeof input[Symbol.iterator] === 'function') {
+                  return input.map((entry) => _.dist(block.location.instance, entry, flat));
+               } else {
+                  return _.dist(block.location.instance, input, flat);
+               }
+            }
          },
          drops: (item) => {
-            const drops = instance.getDrops($('-', item));
+            const drops = instance.getDrops($(':standardize', item));
             return drops.length === 0 ? null : drops;
          },
          get facing () {
@@ -63,47 +72,61 @@ export const wrapper = (_, $) => {
                instance.setBlockData(data);
             }
          },
+         /*
          get glowing () {
-            return !!$(`@e[type=shulker,tag=grakkit,tag=glow,tag=${instance.getLocation().hashCode()}]`).instance()[0];
+            return !!$(`@e[type=magma_cube,tag=glowing,tag=${instance.getLocation().hashCode()}]`).instance()[0];
          },
          set glowing (value) {
             const hash = instance.getLocation().hashCode().toString();
-            const selector = `@e[type=shulker,tag=grakkit,tag=glow,tag=${hash}]`;
-            if (value === true && !$(selector).instance()[0]) {
-               $('?shulker', instance.getLocation())
-                  .tag('grakkit', 'glow', hash)
+            if (value && block.material !== 'air' && !$(instance).glowing()) {
+               $(instance.getLocation())
+                  .spawn('magma_cube')
+                  .tag('glowing', hash)
                   .effect('invisibility', { duration: Infinity, amplifier: 1 })
                   .ai(false)
-                  .collidable(false)
-                  .glowing(true)
-                  .invulnerable(true)
                   .silent(true)
+                  .glowing(true)
+                  .collidable(false)
+                  .invulnerable(true)
+                  .vitality(1)
                   .health(1)
-                  .vitality(1);
+                  .instance()
+                  .setSize(2);
             } else if (value === false) {
-               $(selector).remove();
+               $(`@e[type=magma_cube,tag=glowing,tag=${hash}]`).remove();
             }
          },
+         */
          get instance () {
             return instance;
          },
          get location () {
-            return $(instance.getLocation());
+            return instance.getLocation().toVector();
          },
          get material () {
             return $.material[instance.getType()];
          },
          set material (value) {
             instance.setType($.material[value]);
-            if (value === 'air') {
-               $(`@e[type=shulker,tag=grakkit,tag=glow,tag=${instance.getLocation().hashCode()}]`).remove();
-            }
+            value === 'air' && $(instance).glowing(false);
          },
          spawn: (lifeform) => {
             return $(`?${lifeform}`, instance.getLocation());
          },
+         get vector () {
+            return instance.getLocation().toVector();
+         },
          get world () {
-            return instance.getLocation().getWorld();
+            return instance.getWorld();
+         },
+         get x () {
+            return instance.getX();
+         },
+         get y () {
+            return instance.getY();
+         },
+         get z () {
+            return instance.getZ();
          }
       };
       return block;
@@ -111,8 +134,11 @@ export const wrapper = (_, $) => {
 };
 
 export const parser = (_, $) => {
-   return () => {
-      return {};
+   return (thing) => {
+      return {
+         data: server.createBlockData(thing.data),
+         state: $('!stone').nbt(thing.state).meta().getBlockState()
+      };
    };
 };
 
@@ -120,16 +146,24 @@ export const chain = (_, $) => {
    return {
       data: 'appender',
       distance: 'runner',
+      drop: 'runnerLink',
       drops: 'runner',
-      facing: 'setter',
       glowing: 'setter',
       instance: 'getter',
-      location: 'getter',
+      location: 'getterLink',
       material: 'setter',
-      serialize: (block) => {
-         return {};
+      serialize: (thing) => {
+         return {
+            format: 'block',
+            data: thing.instance.getBlockData().getAsString(),
+            state: $(`!${thing.material}`).meta((meta) => meta.setBlockState(thing.instance.getState())).nbt()
+         };
       },
-      spawn: 'runner',
-      world: 'getter'
+      spawn: 'runnerLink',
+      vector: 'getterLink',
+      world: 'getter',
+      x: 'getter',
+      y: 'getter',
+      z: 'getter'
    };
 };

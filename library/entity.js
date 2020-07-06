@@ -1,15 +1,15 @@
+const Note = Java.type('org.bukkit.Note');
 const Player = Java.type('org.bukkit.entity.Player');
 const LivingEntity = Java.type('org.bukkit.entity.LivingEntity');
 const Attributable = Java.type('org.bukkit.attribute.Attributable');
 const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
-const ChatMessageType = Java.type('net.md_5.bungee.api.ChatMessageType');
 const TextComponent = Java.type('net.md_5.bungee.api.chat.TextComponent');
+const ChatMessageType = Java.type('net.md_5.bungee.api.ChatMessageType');
+const InventoryHolder = Java.type('org.bukkit.inventory.InventoryHolder');
 const PersistentDataType = Java.type('org.bukkit.persistence.PersistentDataType');
 
 export const wrapper = (_, $) => {
-   const NBTTagCompound = _.nms.NBTTagCompound;
    const util = {
-      attributable: Attributable,
       attribute: {
          max_health: [ 0, 1024 ],
          follow_range: [ 0, 2048 ],
@@ -122,17 +122,27 @@ export const wrapper = (_, $) => {
                   .map(util.bar);
             },
             add: (value) => {
-               const key = new NamespacedKey(core.plugin, `${uuid}/${value.name}`);
-               if (!server.getBossBar(key)) {
-                  const bar = server.createBossBar(key, '', $.barColor.white, $.barStyle.solid);
-                  Object.assign(util.bar(bar), {
-                     title: value.title || '',
-                     progress: value.progress || 0,
-                     color: value.color || 'white',
-                     style: value.style || 'solid',
-                     flags: value.flags || []
-                  });
-                  bar.addPlayer(instance);
+               typeof value === 'string' && (value = { name: value });
+               if (typeof value === 'object') {
+                  if (typeof value.amount === 'number') {
+                     const key = new NamespacedKey(core.plugin, `${uuid}/${value.name}`);
+                     let bar = server.getBossBar(key);
+                     if (!bar) {
+                        bar = server.createBossBar(key, '', $.barColor.white, $.barStyle.solid);
+                        Object.assign(util.bar(bar), {
+                           title: value.title || '',
+                           progress: value.progress || 0,
+                           color: value.color || 'white',
+                           style: value.style || 'solid',
+                           flags: value.flags || []
+                        });
+                     }
+                     return bar;
+                  } else {
+                     throw 'TypeError: That is not a valid boss bar object!';
+                  }
+               } else {
+                  throw 'TypeError: You must supply a string value or boss bar object!';
                }
             },
             delete: (value) => {
@@ -150,12 +160,10 @@ export const wrapper = (_, $) => {
                      bar.removePlayer(instance);
                      server.removeBossBar(bar.getKey());
                   });
+            },
+            get: (bars, input) => {
+               return bars.filter((bar) => bar.internal.key.split('/')[1] === input)[0];
             }
-         });
-      },
-      remap: (source, consumer) => {
-         return _.define(source, (entry) => {
-            if (entry.key === _.lower(entry.key)) return consumer(entry);
          });
       },
       equipment: {
@@ -190,14 +198,19 @@ export const wrapper = (_, $) => {
                return _.array(instance.getPassengers()).map((passenger) => $(passenger));
             },
             add: (value) => {
-               instance.addPassenger($('-', value));
+               instance.addPassenger($(':standardize', value));
             },
             delete: (value) => {
-               instance.removePassenger($('-', value));
+               instance.removePassenger($(':standardize', value));
             },
             clear: () => {
                instance.eject();
             }
+         });
+      },
+      remap: (source, consumer) => {
+         return _.define(source, (entry) => {
+            if (entry.key === _.lower(entry.key)) return consumer(entry);
          });
       },
       tags: (instance) => {
@@ -221,15 +234,16 @@ export const wrapper = (_, $) => {
       const alive = instance instanceof LivingEntity;
       const attributable = instance instanceof Attributable;
       const player = instance instanceof Player;
-      const entity = {
+      const inventory = instance instanceof InventoryHolder;
+      const thing = {
          get ai () {
-            instance.hasAI();
+            if (alive) return instance.hasAI();
          },
          set ai (value) {
-            instance.setAI(value);
+            alive && instance.setAI(value);
          },
          get attribute () {
-            return util.remap($.attribute, (entry) => {
+            return _.define($('+').fronts('attribute'), (entry) => {
                if (attributable) {
                   const attribute = instance.getAttribute(entry.value);
                   if (attribute) {
@@ -238,8 +252,12 @@ export const wrapper = (_, $) => {
                            return attribute.getBaseValue();
                         },
                         set: (value) => {
-                           value || (value = attribute.getDefaultValue());
-                           attribute.setBaseValue(_.clamp(value, ...util.attribute[entry.key]));
+                           if (value === null || typeof value === 'number') {
+                              _.def(value) || (value = attribute.getDefaultValue());
+                              attribute.setBaseValue(_.clamp(value, ...util.attribute[entry.key]));
+                           } else {
+                              throw 'You must supply a null value or a numeric value!';
+                           }
                         }
                      };
                   }
@@ -247,122 +265,146 @@ export const wrapper = (_, $) => {
             });
          },
          set attribute (value) {
-            _.keys($.attribute).forEach((key) => (entity.attribute[key] = value[key]));
+            if (typeof value === 'object') {
+               value || (value = {});
+               try {
+                  _.keys($('+').fronts('attribute')).forEach((key) => (thing.attribute[key] = value[key] || null));
+               } catch (error) {
+                  throw 'That input contains invalid entries!';
+               }
+            } else {
+               throw 'You must supply an object or a null value!';
+            }
          },
-         get bars () {
-            return util.bars(instance).get();
+         get bar () {
+            if (player) return util.bars(instance).get();
          },
-         set bars (value) {
-            util.bars(instance).set(value);
+         set bar (value) {
+            player && util.bars(instance).set(value);
          },
          get block () {
-            return $(instance.getLocation().getBlock());
+            return instance.getLocation().getBlock();
          },
          get collidable () {
-            instance.isCollidable();
+            if (alive) return instance.isCollidable();
          },
          set collidable (value) {
-            instance.setCollidable(value);
+            if (typeof value === 'boolean') {
+               alive && instance.setCollidable(value);
+            } else {
+               throw 'You must supply a boolean value!';
+            }
          },
          get data () {
-            const container = instance.getPersistentDataContainer();
-            return _.object(_.array(container.getRaw().entrySet()), (entry) => {
-               const directory = new NamespacedKey(...entry.getKey().split(':'));
-               if (directory.getNamespace() === core.plugin.getName()) {
-                  let value = _.base.decode(entry.getValue().asString());
-                  try {
-                     return { [`${directory.getKey()}`]: JSON.parse(value) };
-                  } catch (error) {
-                     return { [`${directory.getKey()}`]: value };
-                  }
-               }
-            });
+            return $('+').data(instance.getPersistentDataContainer());
          },
          set data (value) {
-            const container = instance.getPersistentDataContainer();
-            _.array(container.getRaw().entrySet()).forEach((entry) => {
-               if (entry.getKey().split(':')[1] === core.plugin.getName()) {
-                  container.remove(new NamespacedKey(core.plugin, entry.getKey().getKey()));
-               }
-            });
-            _.entries(value).forEach((entry) => {
-               container.set(
-                  new NamespacedKey(core.plugin, entry.key),
-                  PersistentDataType.STRING,
-                  _.base.encode(JSON.stringify(core.serialize(entry.value)))
-               );
-            });
+            $('+').data(instance.getPersistentDataContainer(), value);
          },
-         distance: (target, flat) => {
-            return _.dist(entity.location, $('-', target), flat);
+         distance: (target, option) => {
+            try {
+               return $('+').distance(instance.location, target, option);
+            } catch (error) {
+               switch (error) {
+                  case 'invalid-both':
+                  case 'invalid-source':
+                     throw 'ImpossibleError: How the fuck are you seeing this error!?';
+                  case 'invalid-target':
+                     throw 'Argument 1 must be a location, vector, or have a location or vector attached!';
+               }
+            }
          },
          get effect () {
-            return util.remap($.peType, (entry) => {
-               return {
-                  get: () => {
-                     if (alive) {
+            return _.define($('+').fronts('peType'), (entry) => {
+               if (alive) {
+                  return {
+                     get: () => {
                         const effect = instance.getPotionEffect(entry.value);
                         if (effect) return { duration: effect.getDuration(), amplifier: effect.getAmplifier() + 1 };
-                     }
-                  },
-                  set: (value) => {
-                     if (alive) {
-                        value || (value = {});
-                        const duration = _.clamp(value.duration || 0, 0, 2147483647);
-                        const amplifier = _.clamp(value.amplifier || 0, 0, 255);
-                        if (duration > 0 && amplifier > 0) {
-                           instance.addPotionEffect(entry.value.createEffect(duration, amplifier - 1), true);
+                     },
+                     set: (value) => {
+                        if (typeof value === 'object') {
+                           value || (value = {});
+                           const duration = _.clamp(value.duration || 0, 0, 2147483647);
+                           const amplifier = _.clamp(value.amplifier || 0, 0, 255);
+                           if (duration > 0 && amplifier > 0) {
+                              instance.addPotionEffect(entry.value.createEffect(duration, amplifier - 1), true);
+                           } else {
+                              instance.removePotionEffect(entry.value);
+                           }
                         } else {
-                           instance.removePotionEffect(entry.value);
+                           throw 'You must supply an object or a null value!';
                         }
                      }
-                  }
-               };
+                  };
+               }
             });
          },
          set effect (value) {
-            _.keys($.peType).forEach((key) => (entity.effect[key] = value[key]));
+            if (typeof value === 'object') {
+               value || (value = {});
+               try {
+                  _.keys($('+').fronts('peType')).forEach((key) => (thing.effect[key] = value[key] || null));
+               } catch (error) {
+                  throw 'That input contains invalid entries!';
+               }
+            } else {
+               throw 'You must supply an object or a null value!';
+            }
          },
          get equipment () {
-            return util.remap($.equipmentSlot, (entry) => {
-               const slot = util.equipment[entry.key];
-               const pascal = _.pascal(slot);
-               return {
-                  get: () => {
-                     if (alive) {
-                        return $(instance.getEquipment()[`get${pascal}`]());
+            return _.define($('+').fronts('equipmentSlot'), (entry) => {
+               if (alive) {
+                  const slot = util.equipment[entry.key];
+                  const pascal = _.pascal(slot);
+                  return {
+                     get: () => {
+                        return instance.getEquipment()[`get${pascal}`]();
+                     },
+                     set: (value) => {
+                        value = $('+').instance(value);
+                        if (value === null || value instanceof ItemStack) {
+                           instance.getEquipment()[`set${pascal}`](value);
+                        } else {
+                           throw 'You must supply an item stack or a null value!';
+                        }
                      }
-                  },
-                  set: (value) => {
-                     if (alive) {
-                        value || (value = null);
-                        instance.getEquipment()[`set${pascal}`]($('-', value));
-                     }
-                  }
-               };
+                  };
+               }
             });
          },
          set equipment (value) {
-            _.keys($.equipmentSlot).forEach((key) => (instance.equipment[util.equipment[key]] = value[key]));
+            if (typeof value === 'object') {
+               value || (value = {});
+               try {
+                  _.keys($('+').fronts('equipmentSlot')).forEach((key) => (thing.equipment[key] = value[key] || null));
+               } catch (error) {
+                  throw 'That input contains invalid entries!';
+               }
+            } else {
+               throw 'You must supply an object or a null value!';
+            }
          },
          get glowing () {
-            instance.isGlowing();
+            return instance.isGlowing();
          },
          set glowing (value) {
             instance.setGlowing(value);
          },
          get health () {
-            if (alive) {
-               return instance.getHealth();
-            }
+            if (alive) return instance.getHealth();
          },
          set health (value) {
-            if (alive) {
-               instance.setHealth(_.clamp(value, 0, instance.getMaxHealth()));
-            }
+            alive && instance.setHealth(_.clamp(value, 0, instance.getMaxHealth()));
          },
          get instance () {
             return instance;
+         },
+         get inventory () {
+            if (inventory) return $(instance.getInventory());
+         },
+         set inventory (value) {
+            if (inventory) instance.getInventory().setContents($(':standardize', value));
          },
          get invulnerable () {
             return instance.isInvulnerable();
@@ -371,10 +413,15 @@ export const wrapper = (_, $) => {
             instance.setInvulnerable(value);
          },
          get item () {
-            return $(instance.getItemInHand());
+            return instance.getItemInHand();
          },
          set item (value) {
-            instance.setItemInHand($('-', value));
+            value = $('+').instance(value);
+            if (value === null || value instanceof ItemStack) {
+               instance.setItemInHand(value);
+            } else {
+               throw 'You must supply an item stack or a null value!';
+            }
          },
          get lifeform () {
             return $.entityType[instance.getType()];
@@ -415,11 +462,20 @@ export const wrapper = (_, $) => {
             }
          },
          get nbt () {
-            return _.serialize(instance.getHandle().save(new NBTTagCompound()));
+            return _.serialize(instance.getHandle().save(new _.nms.NBTTagCompound()));
          },
          set nbt (value) {
             instance.getHandle().load(_.parse(value));
          },
+         /*
+         note: (type, value) => {
+            if (player) {
+               instance.sendBlockChange(entity.location.instance(), $.material.note_block.createBlockData());
+               instance.playNote(entity.location.instance(), $.instrument[type], new Note(_.clamp(value, 0, 24)));
+               instance.sendBlockChange(entity.location.instance(), $.material.air.createBlockData());
+            }
+         },
+         */
          /*
          options: (key, value) => {
             if (key === undefined) {
@@ -467,7 +523,7 @@ export const wrapper = (_, $) => {
             if (player) {
                options || (options = {});
                instance.playSound(
-                  options.location ? $('-', options.location) : instance.getLocation(),
+                  options.location ? $(':standardize', options.location) : instance.getLocation(),
                   $.sound[noise],
                   $.soundCategory[options.category || 'master'],
                   options.volume || 1,
@@ -490,6 +546,7 @@ export const wrapper = (_, $) => {
                      instance.sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(message));
                      break;
                   case 'title':
+                     instance.sendTitle(...message.split('\n'), 10, 70, 20);
                      break;
                   default:
                      instance.sendMessage(message);
@@ -499,6 +556,18 @@ export const wrapper = (_, $) => {
          },
          get uuid () {
             return instance.getUniqueId().toString();
+         },
+         get vector () {
+            return thing.location.vector;
+         },
+         set vector (value) {
+            thing.location.vector = value;
+         },
+         get velocity () {
+            return $(instance.getVelocity());
+         },
+         set velocity (value) {
+            instance.setVelocity($(':standardize', value));
          },
          get vitality () {
             if (alive) {
@@ -510,12 +579,6 @@ export const wrapper = (_, $) => {
                instance.setMaxHealth(value);
             }
          },
-         get velocity () {
-            return $(instance.getVelocity());
-         },
-         set velocity (value) {
-            instance.setVelocity($('-', value));
-         },
          get world () {
             return instance.getLocation().getWorld();
          },
@@ -523,13 +586,13 @@ export const wrapper = (_, $) => {
             instance.teleport(world.getSpawnLocation());
          }
       };
-      return entity;
+      return thing;
    };
 };
 
 export const parser = (_, $) => {
    return (input) => {
-      return $(`?${input.lifeform}`, $([ input.location ])).nbt(input.nbt);
+      return $(`?${input.lifeform}`, $(input.location)).nbt(input.nbt);
    };
 };
 
@@ -547,32 +610,34 @@ export const chain = (_, $) => {
       glowing: 'setter',
       health: 'setter',
       instance: 'getter',
+      inventory: 'setter',
       invulnerable: 'setter',
-      item: 'setter',
+      item: 'setterLink',
       lifeform: 'setter',
-      location: 'setter',
+      location: 'setterLink',
       mode: 'setter',
       name: 'setter',
       nbt: 'appender',
-      options: 'runner',
+      note: 'runner',
       passenger: 'lister',
-      player: 'runner',
-      remove: 'runner',
-      serialize: (entity) => {
+      player: 'getter',
+      remove: 'voider',
+      serialize: (thing) => {
          return {
             format: 'entity',
-            lifeform: entity.lifeform,
-            location: $([ entity.location ]),
-            data: entity.nbt
+            lifeform: thing.lifeform,
+            location: thing.location,
+            nbt: data.nbt
          };
       },
       silent: 'setter',
-      sneaking: 'setter',
-      sound: 'runner',
+      sneaking: 'getter',
+      sound: 'voider',
       tag: 'lister',
-      text: 'runner',
+      text: 'voider',
       uuid: 'getter',
-      velocity: 'setter',
+      vector: 'setterLink',
+      velocity: 'setterLink',
       vitality: 'setter',
       world: 'setter'
    };
@@ -610,3 +675,35 @@ export const chain = (_, $) => {
    }
    */
 };
+
+// /js $(self).sound('block_note_block_bit', { pitch: x })
+
+/*
+[
+   0.5, //                0.5
+   0.5297315471796477, // 0.52972412109375
+   0.5612310241546865, // 0.56121826171875
+   0.5946035575013605, // 0.5945892333984375
+   0.6299605249474366, // 0.6299591064453125
+   0.6674199270850172,
+   0.7071067811865476,
+   0.7491535384383408,
+   0.7937005259840997,
+   0.8408964152537145,
+   0.8908987181403393,
+   0.9438743126816934,
+   1,
+   1.0594630943592953,
+   1.122462048309373,
+   1.189207115002721,
+   1.2599210498948732,
+   1.3348398541700344,
+   1.4142135623730951,
+   1.4983070768766815,
+   1.5874010519681996,
+   1.681792830507429,
+   1.7817974362806785,
+   1.887748625363387,
+   2
+]
+*/

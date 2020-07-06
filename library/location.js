@@ -2,16 +2,35 @@ const Location = Java.type('org.bukkit.Location');
 
 export const wrapper = (_, $) => {
    return (instance) => {
-      const location = {
+      const thing = {
          get block () {
-            return $(instance.getBlock());
+            return instance.getBlock();
          },
-         distance: (target, flat) => {
-            return _.dist(location, $('-', target), flat);
+         distance: (target, option) => {
+            try {
+               return $('+').distance(instance, target, option);
+            } catch (error) {
+               switch (error) {
+                  case 'invalid-both':
+                  case 'invalid-source':
+                     throw 'ImpossibleError: How the fuck are you seeing this error!?';
+                  case 'invalid-target':
+                     throw 'Argument 1 must be a location, vector, or have a location or vector attached!';
+               }
+            }
          },
-         drop: (item, naturally) => {
-            const drop = $('-', item);
-            return $(location.world[`dropItem${naturally ? 'Naturally' : ''}`](location.instance, drop));
+         drop: (item, option) => {
+            try {
+               return $('+').drop(instance, item, option);
+            } catch (error) {
+               switch (error) {
+                  case 'invalid-both':
+                  case 'invalid-location':
+                     throw 'ImpossibleError: How the fuck are you seeing this error!?';
+                  case 'invalid-item':
+                     throw 'TypeError: Argument 1 must be an item!';
+               }
+            }
          },
          get instance () {
             return instance;
@@ -20,86 +39,102 @@ export const wrapper = (_, $) => {
             return instance.getPitch();
          },
          set pitch (value) {
-            return instance.setPitch(value);
+            if (typeof value === 'number') instance.setPitch(value);
+            else throw 'TypeError: You must supply a numeric value!';
          },
-         spawn: (lifeform) => {
-            return $(`?${lifeform}`, instance);
+         spawn: (lifeform, option) => {
+            try {
+               return $('+').spawn(instance, lifeform, option);
+            } catch (error) {
+               switch (error) {
+                  case 'invalid-both':
+                  case 'invalid-location':
+                     throw 'ImpossibleError: How the fuck are you seeing this error!?';
+                  case 'invalid-lifeform':
+                     throw 'TypeError: Argument 1 must be an item!';
+               }
+            }
          },
-         get x () {
-            return instance.getX();
+         get vector () {
+            return instance.toVector();
          },
-         set x (value) {
-            return instance.setX(value);
-         },
-         get y () {
-            return instance.getY();
-         },
-         set y (value) {
-            return instance.setY(value);
-         },
-         get yaw () {
-            return instance.getYaw();
-         },
-         set yaw (value) {
-            return instance.setYaw(value);
-         },
-         get z () {
-            return instance.getZ();
-         },
-         set z (value) {
-            return instance.setZ(value);
+         set vector (value) {
+            value = $('+').instance(value);
+            if (value instanceof Vector) {
+               thing.x = value.getX();
+               thing.y = value.getY();
+               thing.z = value.getZ();
+            } else {
+               throw 'TypeError: You must supply a vector!';
+            }
          },
          get world () {
             return instance.getWorld();
          },
          set world (value) {
-            try {
-               instance.setWorld(value);
-            } catch (error) {
-               try {
-                  instance.setWorld(server.getWorld(_.uuid(value)));
-               } catch (error) {
-                  instance.setWorld(server.getWorld(value));
-               }
-            }
+            if (!value instanceof World) value = server.getWorld(value);
+            if (_.def(value)) return instance.setWorld(value);
+            else throw 'ReferenceError: That world does not exist!';
+         },
+         get x () {
+            return instance.getX();
+         },
+         set x (value) {
+            if (typeof value === 'number') instance.setX(value);
+            else throw 'TypeError: You must supply a numeric value!';
+         },
+         get y () {
+            return instance.getY();
+         },
+         set y (value) {
+            if (typeof value === 'number') instance.setY(value);
+            else throw 'TypeError: You must supply a numeric value!';
+         },
+         get yaw () {
+            return instance.getYaw();
+         },
+         set yaw (value) {
+            if (typeof value === 'number') instance.setYaw(value);
+            else throw 'TypeError: You must supply a numeric value!';
+         },
+         get z () {
+            return instance.getZ();
+         },
+         set z (value) {
+            if (typeof value === 'number') instance.setZ(value);
+            else throw 'TypeError: You must supply a numeric value!';
          }
       };
-      return location;
+      return thing;
    };
 };
 
 export const parser = (_, $) => {
-   return (location) => {
-      return new Location(
-         server.getWorld(_.uuid(location.world)),
-         location.x,
-         location.y,
-         location.z,
-         location.pitch,
-         location.yaw
-      );
+   return (thing) => {
+      return new Location(server.getWorld(thing.world), thing.x, thing.y, thing.z, thing.pitch, thing.yaw);
    };
 };
 
 export const chain = (_, $) => {
    return {
-      block: 'getter',
-      distance: 'getter',
-      drop: 'runner',
+      block: 'getterLink',
+      distance: 'runner',
+      drop: 'runnerLink',
       instance: 'getter',
       pitch: 'setter',
-      serialize: (location) => {
+      serialize: (thing) => {
          return {
             format: 'location',
-            world: location.world.getUID().toString(),
-            x: location.x,
-            y: location.y,
-            z: location.z,
-            pitch: location.pitch,
-            yaw: location.yaw
+            pitch: thing.pitch,
+            world: thing.world.getUID().toString(),
+            x: thing.x,
+            y: thing.y,
+            yaw: thing.yaw,
+            z: thing.z
          };
       },
-      spawn: 'runner',
+      spawn: 'runnerLink',
+      vector: 'setterLink',
       world: 'setter',
       x: 'setter',
       y: 'setter',
