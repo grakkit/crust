@@ -601,7 +601,7 @@ export const chain = (_, $) => {
       ai: 'setter',
       attribute: 'setterNest',
       bar: 'lister',
-      block: 'getter',
+      block: 'getterLink',
       collidable: 'setter',
       data: 'appender',
       distance: 'runner',
@@ -620,7 +620,7 @@ export const chain = (_, $) => {
       nbt: 'appender',
       note: 'runner',
       passenger: 'lister',
-      player: 'getter',
+      player: 'getterLink',
       remove: 'voider',
       serialize: (thing) => {
          return {

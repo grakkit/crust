@@ -457,7 +457,6 @@ export const receiver = (_, $) => {
                return _.def(instance) ? jx[type].wrapper(instance) : instance;
             })
          );
-         that[''] = `jx.${type}ChainerNest@${_.array(8, () => _.rand.entry('0123456789abcdef')).join('')}`;
          return _.extend(that, { [Symbol.iterator]: (...args) => input.values(...args) });
       } else {
          const that = jx[type].chainer([ _.def(input) ? jx[type].wrapper(input) : input ], 1);
@@ -467,7 +466,6 @@ export const receiver = (_, $) => {
                return result === that ? slayer : result[0];
             }
          }));
-         slayer[''] = `jx.${type}Chainer@${_.array(8, () => _.rand.entry('0123456789abcdef')).join('')}`;
          return slayer;
       }
    };
