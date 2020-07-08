@@ -1,235 +1,72 @@
-const Note = Java.type('org.bukkit.Note');
+const UUID = Java.type('java.util.UUID');
+const Entity = Java.type('org.bukkit.entity.Entity');
 const Player = Java.type('org.bukkit.entity.Player');
+const Vector = Java.type('org.bukkit.util.Vector');
+const Location = Java.type('org.bukkit.Location');
 const LivingEntity = Java.type('org.bukkit.entity.LivingEntity');
 const Attributable = Java.type('org.bukkit.attribute.Attributable');
 const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
 const TextComponent = Java.type('net.md_5.bungee.api.chat.TextComponent');
 const ChatMessageType = Java.type('net.md_5.bungee.api.ChatMessageType');
 const InventoryHolder = Java.type('org.bukkit.inventory.InventoryHolder');
-const PersistentDataType = Java.type('org.bukkit.persistence.PersistentDataType');
+
+// a nice beat
+// /js global.p=$(self);_.interval(()=>{p.note('block_note_block_bass',1,{}),p.note('block_note_block_bit',1,{})},350);_.interval(()=>{p.note('block_note_block_snare', 1,{})},350*4);_.interval(()=>{p.note('block_note_block_basedrum',1,{})},350*2);
+
+const util = {
+   attribute: {
+      max_health: [ 0, 1024 ],
+      follow_range: [ 0, 2048 ],
+      knockback_resistance: [ 0, 1 ],
+      movement_speed: [ 0, 1024 ],
+      attack_damage: [ 0, 2048 ],
+      armor: [ 0, 30 ],
+      armor_toughness: [ 0, 20 ],
+      attack_knockback: [ 0, 5 ],
+      attack_speed: [ 0, 1024 ],
+      luck: [ -1024, 1024 ],
+      jump_strength: [ 0, 2 ],
+      flying_speed: [ 0, 1024 ],
+      spawn_reinforcements: [ 0, 1 ]
+   },
+   equipment: {
+      chest: 'chestplate',
+      feet: 'boots',
+      hand: 'itemInMainHand',
+      head: 'helmet',
+      legs: 'leggings',
+      off_hand: 'itemInOffHand'
+   },
+   notes: [
+      0.5, //                    converted
+      0.52972412109375, //       converted
+      0.56121826171875, //       converted
+      0.5945892333984375, //     converted
+      0.6299591064453125, //     converted
+      0.6674199270850172,
+      0.7071067811865476,
+      0.7491535384383408,
+      0.7937005259840997,
+      0.8408964152537145,
+      0.8908987181403393,
+      0.9438743126816934,
+      1, //                      converted
+      1.0594630943592953,
+      1.122462048309373,
+      1.189207115002721,
+      1.2599210498948732,
+      1.3348398541700344,
+      1.4142135623730951,
+      1.4983070768766815,
+      1.5874010519681996,
+      1.681792830507429,
+      1.7817974362806785,
+      1.887748625363387,
+      2 //                      converted
+   ]
+};
 
 export const wrapper = (_, $) => {
-   const util = {
-      attribute: {
-         max_health: [ 0, 1024 ],
-         follow_range: [ 0, 2048 ],
-         knockback_resistance: [ 0, 1 ],
-         movement_speed: [ 0, 1024 ],
-         attack_damage: [ 0, 2048 ],
-         armor: [ 0, 30 ],
-         armor_toughness: [ 0, 20 ],
-         attack_knockback: [ 0, 5 ],
-         attack_speed: [ 0, 1024 ],
-         luck: [ -1024, 1024 ],
-         jump_strength: [ 0, 2 ],
-         flying_speed: [ 0, 1024 ],
-         spawn_reinforcements: [ 0, 1 ]
-      },
-      bar: (bar) => {
-         const internal = {
-            get key () {
-               return bar.getKey().getKey();
-            },
-            get title () {
-               return bar.getTitle();
-            },
-            set title (value) {
-               bar.setTitle(value);
-            },
-            get progress () {
-               return bar.getProgress();
-            },
-            set progress (value) {
-               bar.setProgress(value);
-            },
-            get color () {
-               return $.barColor[bar.getColor()];
-            },
-            set color (value) {
-               bar.setColor($.barColor[value]);
-            },
-            get style () {
-               return $.barStyle[bar.getStyle()];
-            },
-            set style (value) {
-               bar.setStyle($.barStyle[value]);
-            },
-            get flags () {
-               return util.flags(bar).get();
-            },
-            set flags (value) {
-               util.flags(bar).set(value);
-            }
-         };
-         const that = {
-            get internal () {
-               return internal;
-            },
-            title: (value) => {
-               if (value === undefined) {
-                  return internal.title;
-               } else {
-                  internal.title = value;
-                  return that;
-               }
-            },
-            progress: (value) => {
-               if (value === undefined) {
-                  return internal.progress;
-               } else {
-                  internal.progress = value;
-                  return that;
-               }
-            },
-            color: (value) => {
-               if (value === undefined) {
-                  return internal.color;
-               } else {
-                  internal.color = value;
-                  return that;
-               }
-            },
-            style: (value) => {
-               if (value === undefined) {
-                  return internal.style;
-               } else {
-                  internal.style = value;
-                  return that;
-               }
-            },
-            flags: (...args) => {
-               if (args[0] === undefined) {
-                  return internal.flags;
-               } else {
-                  if (typeof args[0] === 'function') {
-                     args[0](internal.flags);
-                  } else {
-                     internal.flags = args;
-                  }
-                  return that;
-               }
-            }
-         };
-         return that;
-      },
-      bars: (instance) => {
-         const uuid = instance.getUniqueId().toString();
-         return _.mirror({
-            get array () {
-               return _.array(server.getBossBars())
-                  .filter((bar) => bar.getKey().getNamespace() === core.plugin.getName())
-                  .filter((bar) => bar.getKey().getKey().split('/')[0] === uuid)
-                  .map(util.bar);
-            },
-            add: (value) => {
-               typeof value === 'string' && (value = { name: value });
-               if (typeof value === 'object') {
-                  if (typeof value.amount === 'number') {
-                     const key = new NamespacedKey(core.plugin, `${uuid}/${value.name}`);
-                     let bar = server.getBossBar(key);
-                     if (!bar) {
-                        bar = server.createBossBar(key, '', $.barColor.white, $.barStyle.solid);
-                        Object.assign(util.bar(bar), {
-                           title: value.title || '',
-                           progress: value.progress || 0,
-                           color: value.color || 'white',
-                           style: value.style || 'solid',
-                           flags: value.flags || []
-                        });
-                     }
-                     return bar;
-                  } else {
-                     throw 'TypeError: That is not a valid boss bar object!';
-                  }
-               } else {
-                  throw 'TypeError: You must supply a string value or boss bar object!';
-               }
-            },
-            delete: (value) => {
-               const bar = server.getBossBar(new NamespacedKey(core.plugin, `${uuid}/${value.internal.name}`));
-               if (bar) {
-                  bar.removePlayer(instance);
-                  server.removeBossBar(bar.getKey());
-               }
-            },
-            clear: () => {
-               _.array(server.getBossBars())
-                  .filter((bar) => bar.getKey().getNamespace() === core.plugin.getName())
-                  .filter((bar) => bar.getKey().getKey().split('/')[0] === uuid)
-                  .forEach((bar) => {
-                     bar.removePlayer(instance);
-                     server.removeBossBar(bar.getKey());
-                  });
-            },
-            get: (bars, input) => {
-               return bars.filter((bar) => bar.internal.key.split('/')[1] === input)[0];
-            }
-         });
-      },
-      equipment: {
-         chest: 'chestplate',
-         feet: 'boots',
-         hand: 'itemInMainHand',
-         head: 'helmet',
-         legs: 'leggings',
-         off_hand: 'itemInOffHand'
-      },
-      flags: (bar) => {
-         return _.mirror({
-            get array () {
-               const output = [];
-               util.remap($.barFlag, (entry) => bar.hasFlag(entry.value) && output.push(entry.key));
-               return output;
-            },
-            add: (value) => {
-               bar.addFlag($.barFlag[value]);
-            },
-            remove: (value) => {
-               bar.removeFlag($.barFlag[value]);
-            },
-            clear: () => {
-               util.remap($.barFlag, (entry) => bar.removeFlag(entry.value));
-            }
-         });
-      },
-      passengers: (instance) => {
-         return _.mirror({
-            get array () {
-               return _.array(instance.getPassengers()).map((passenger) => $(passenger));
-            },
-            add: (value) => {
-               instance.addPassenger($(':standardize', value));
-            },
-            delete: (value) => {
-               instance.removePassenger($(':standardize', value));
-            },
-            clear: () => {
-               instance.eject();
-            }
-         });
-      },
-      remap: (source, consumer) => {
-         return _.define(source, (entry) => {
-            if (entry.key === _.lower(entry.key)) return consumer(entry);
-         });
-      },
-      tags: (instance) => {
-         return _.mirror({
-            get array () {
-               return _.array(instance.getScoreboardTags());
-            },
-            add: (value) => {
-               instance.getScoreboardTags().add(value);
-            },
-            remove: (value) => {
-               instance.getScoreboardTags().remove(value);
-            },
-            clear: () => {
-               instance.getScoreboardTags().clear();
-            }
-         });
-      }
-   };
    return (instance) => {
       const alive = instance instanceof LivingEntity;
       const attributable = instance instanceof Attributable;
@@ -276,11 +113,42 @@ export const wrapper = (_, $) => {
                throw 'You must supply an object or a null value!';
             }
          },
-         get bar () {
-            if (player) return util.bars(instance).get();
+         bar: (key) => {
+            try {
+               typeof key === 'string' && (key = new NamespacedKey(...key.split(':')));
+            } catch (value) {
+               throw 'SyntaxError: Could not convert string into namespaced key!';
+            }
+            if (key instanceof NamespacedKey) {
+               if (player) {
+                  let bar = server.getBossBar(key);
+                  if (!bar) {
+                     bar = server.createBossBar(key, '', $.barColor.white, $.barStyle.solid);
+                     bar.addPlayer(instance);
+                  }
+                  return bar;
+               }
+            } else {
+               throw 'TypeError: You must supply a string value or a namespaced key!';
+            }
          },
-         set bar (value) {
-            player && util.bars(instance).set(value);
+         get bars () {
+            if (player) return _.array(server.getBossBars());
+         },
+         set bars (value) {
+            if (_.iterable(value)) {
+               const input = value.map((key) => {
+                  try {
+                     return key instanceof NamespacedKey ? key : new NamespacedKey(...key.split(':'));
+                  } catch (error) {
+                     throw 'TypeError: That array contains invalid namespaced keys!';
+                  }
+               });
+               player && thing.bars.forEach((bar) => bar.removePlayer(instance));
+               player && input.forEach((key) => server.getBossBar(key).addPlayer(instance));
+            } else {
+               throw 'TypeError: You must supply an array of namespaced keys!';
+            }
          },
          get block () {
             return instance.getLocation().getBlock();
@@ -292,25 +160,29 @@ export const wrapper = (_, $) => {
             if (typeof value === 'boolean') {
                alive && instance.setCollidable(value);
             } else {
-               throw 'You must supply a boolean value!';
+               throw 'TypeError: You must supply a boolean value!';
             }
          },
          get data () {
             return $('+').data(instance.getPersistentDataContainer());
          },
          set data (value) {
-            $('+').data(instance.getPersistentDataContainer(), value);
+            if (typeof value === 'object') {
+               $('+').data(instance.getPersistentDataContainer(), value);
+            } else {
+               throw 'TypeError: You must supply an object or null value!';
+            }
          },
          distance: (target, option) => {
             try {
-               return $('+').distance(instance.location, target, option);
+               return $('+').distance(instance.getLocation(), target, option);
             } catch (error) {
                switch (error) {
                   case 'invalid-both':
                   case 'invalid-source':
                      throw 'ImpossibleError: How the fuck are you seeing this error!?';
                   case 'invalid-target':
-                     throw 'Argument 1 must be a location, vector, or have a location or vector attached!';
+                     throw 'TypeError: Argument 1 must be a location, vector, or have a location or vector attached!';
                }
             }
          },
@@ -321,6 +193,7 @@ export const wrapper = (_, $) => {
                      get: () => {
                         const effect = instance.getPotionEffect(entry.value);
                         if (effect) return { duration: effect.getDuration(), amplifier: effect.getAmplifier() + 1 };
+                        else return null;
                      },
                      set: (value) => {
                         if (typeof value === 'object') {
@@ -333,7 +206,7 @@ export const wrapper = (_, $) => {
                               instance.removePotionEffect(entry.value);
                            }
                         } else {
-                           throw 'You must supply an object or a null value!';
+                           throw 'TypeError: You must supply an object or a null value!';
                         }
                      }
                   };
@@ -346,10 +219,10 @@ export const wrapper = (_, $) => {
                try {
                   _.keys($('+').fronts('peType')).forEach((key) => (thing.effect[key] = value[key] || null));
                } catch (error) {
-                  throw 'That input contains invalid entries!';
+                  throw 'TypeError: That input contains invalid entries!';
                }
             } else {
-               throw 'You must supply an object or a null value!';
+               throw 'TypeError: You must supply an object or a null value!';
             }
          },
          get equipment () {
@@ -366,7 +239,7 @@ export const wrapper = (_, $) => {
                         if (value === null || value instanceof ItemStack) {
                            instance.getEquipment()[`set${pascal}`](value);
                         } else {
-                           throw 'You must supply an item stack or a null value!';
+                           throw 'TypeError: You must supply an item stack or a null value!';
                         }
                      }
                   };
@@ -379,38 +252,59 @@ export const wrapper = (_, $) => {
                try {
                   _.keys($('+').fronts('equipmentSlot')).forEach((key) => (thing.equipment[key] = value[key] || null));
                } catch (error) {
-                  throw 'That input contains invalid entries!';
+                  throw 'TypeError: That input contains invalid entries!';
                }
             } else {
-               throw 'You must supply an object or a null value!';
+               throw 'TypeError: You must supply an object or a null value!';
             }
          },
          get glowing () {
             return instance.isGlowing();
          },
          set glowing (value) {
-            instance.setGlowing(value);
+            if (typeof value === 'boolean') {
+               instance.setGlowing(value);
+            } else {
+               throw 'TypeError: You must supply a boolean value!';
+            }
          },
          get health () {
             if (alive) return instance.getHealth();
          },
          set health (value) {
-            alive && instance.setHealth(_.clamp(value, 0, instance.getMaxHealth()));
+            if (typeof value === 'number') {
+               alive && instance.setHealth(_.clamp(value, 0, instance.getMaxHealth()));
+            } else {
+               throw 'TypeError: You must supply a numeric value!';
+            }
          },
          get instance () {
             return instance;
          },
          get inventory () {
-            if (inventory) return $(instance.getInventory());
+            if (inventory) return [ ...instance.getInventory() ];
          },
          set inventory (value) {
-            if (inventory) instance.getInventory().setContents($(':standardize', value));
+            if (_.iterable(value)) {
+               value = value.map((item) => {
+                  item = $('+').instance(item);
+                  if (item instanceof ItemStack) return item;
+                  else throw 'TypeError: That array contains non-items!';
+               });
+               if (inventory) instance.getInventory().setContents($('+').instance(value));
+            } else {
+               throw 'TypeError: You must supply an array of items!';
+            }
          },
          get invulnerable () {
             return instance.isInvulnerable();
          },
          set invulnerable (value) {
-            instance.setInvulnerable(value);
+            if (typeof value === 'boolean') {
+               instance.setInvulnerable(value);
+            } else {
+               throw 'TypeError: You must supply a boolean value!';
+            }
          },
          get item () {
             return instance.getItemInHand();
@@ -420,30 +314,30 @@ export const wrapper = (_, $) => {
             if (value === null || value instanceof ItemStack) {
                instance.setItemInHand(value);
             } else {
-               throw 'You must supply an item stack or a null value!';
+               throw 'TypeError: You must supply an item stack or a null value!';
             }
          },
          get lifeform () {
-            return $.entityType[instance.getType()];
-         },
-         set lifeform (value) {
-            instance.setType($.entityType[value]);
+            return $('+').backs('entityType')[instance.getType()];
          },
          get location () {
-            return $(instance.getLocation());
+            return instance.getLocation();
          },
          set location (value) {
-            instance.teleport(value);
+            value = $('+').instance(value);
+            typeof value.getLocation === 'function' && (value = value.getLocation());
+            value instanceof Vector && (value = value.toLocation(thing.world));
+            if (value instanceof Location) {
+               instance.teleport(value);
+            } else {
+               throw 'TypeError: You must specify a location, vector, or object with a location or vector attached!';
+            }
          },
          get mode () {
-            if (player) {
-               return $.gameMode[instance.getGameMode()];
-            }
+            if (player) return $('+').backs('gameMode')[instance.getGameMode()];
          },
          set mode (value) {
-            if (player) {
-               return instance.setGameMode($.gameMode[value]);
-            }
+            if (player) instance.setGameMode($('+').fronts('gameMode')[value]);
          },
          get name () {
             if (player) {
@@ -453,12 +347,17 @@ export const wrapper = (_, $) => {
             }
          },
          set name (value) {
-            if (player) {
-               instance.setDisplayName(value);
-               instance.setPlayerListName(value);
+            if (typeof value === 'string' || value === null) {
+               _.def(value) && (value = '\u00a7r' + value);
+               if (player) {
+                  instance.setDisplayName(value);
+                  instance.setPlayerListName(value);
+               } else {
+                  instance.setCustomName(value);
+                  instance.setCustomNameVisible(value !== null);
+               }
             } else {
-               instance.setCustomName(value);
-               instance.setCustomNameVisible(value !== null);
+               throw 'TypeError: You must specify a string value or a null value!';
             }
          },
          get nbt () {
@@ -467,75 +366,109 @@ export const wrapper = (_, $) => {
          set nbt (value) {
             instance.getHandle().load(_.parse(value));
          },
-         /*
-         note: (type, value) => {
-            if (player) {
-               instance.sendBlockChange(entity.location.instance(), $.material.note_block.createBlockData());
-               instance.playNote(entity.location.instance(), $.instrument[type], new Note(_.clamp(value, 0, 24)));
-               instance.sendBlockChange(entity.location.instance(), $.material.air.createBlockData());
-            }
+         note: (sound, pitch, options) => {
+            thing.sound(sound, _.extend(options || {}, { pitch: util.notes[pitch || 0] }));
          },
-         */
-         /*
-         options: (key, value) => {
-            if (key === undefined) {
-               return _.object(_.entries(_.access()), (entry) => {
-                  if (typeof entry.value === 'boolean') return { [entry.key]: entry.value };
+         get passengers () {
+            return $(_.array(instance.getPassengers()));
+         },
+         set passengers (value) {
+            if (_.iterable(value)) {
+               const input = value.map((entity) => {
+                  entity instanceof UUID && (entity = server.getEntity(entity));
+                  if (entity instanceof Entity) return entity;
+                  else throw 'TypeError: That array contains invalid entity entries!';
                });
-            } else if (value === undefined) {
-               return instance[`get${_.pascal(key)}`]();
+               instance.getPassengers().forEach((entity) => instance.removePassenger(entity));
+               input.forEach((entity) => instance.addPassenger(entity));
             } else {
-               return instance[`set${_.pascal(key)}`](value);
+               throw 'TypeError: You must supply an array of entities!';
             }
          },
-         */
-         options: (...args) => {},
-         get passenger () {
-            return util.passengers(instance).get();
-         },
-         set passenger (value) {
-            util.passengers(instance).set(value);
+         get player () {
+            if (player) return _.player(instance);
          },
          remove: () => {
-            if (player) {
-               instance.kickPlayer('');
-            } else {
-               instance.remove();
-            }
+            if (player) instance.kickPlayer('');
+            else instance.remove();
          },
          get silent () {
-            instance.isSilent();
+            return instance.isSilent();
          },
          set silent (value) {
-            instance.setSilent(value);
-         },
-         get sneaking () {
-            if (player) {
-               return instance.isSneaking();
+            if (typeof value === 'boolean') {
+               instance.setSilent(value);
+            } else {
+               throw 'TypeError: You must supply a boolean value!';
             }
          },
+         get sneaking () {
+            if (player) return instance.isSneaking();
+         },
          set sneaking (value) {
-            if (player) {
-               instance.setSneaking(value);
+            if (typeof value === 'boolean') {
+               if (player) instance.setSneaking(value);
+            } else {
+               throw 'TypeError: You must supply a boolean value!';
             }
          },
          sound: (noise, options) => {
-            if (player) {
+            noise instanceof Sound || (noise = $('+').fronts('sound')[noise]);
+            if (_.def(noise)) {
                options || (options = {});
-               instance.playSound(
-                  options.location ? $(':standardize', options.location) : instance.getLocation(),
-                  $.sound[noise],
-                  $.soundCategory[options.category || 'master'],
-                  options.volume || 1,
-                  options.pitch || 1
-               );
+               if (options.location) {
+                  const value = options.location;
+                  value = $('+').instance(value);
+                  typeof value.getLocation === 'function' && (value = value.getLocation());
+                  value instanceof Vector && (value = value.toLocation(thing.world));
+                  if (value instanceof Location) {
+                     options.location = value;
+                  } else {
+                     throw 'TypeError: The location you specified in your options was invalid!';
+                  }
+               }
+               if (options.category) {
+                  const value = options.category;
+                  value instanceof SoundCategory || (value = $('+').fronts('soundCategory')[value]);
+                  if (_.def(value)) {
+                     options.category = value;
+                  } else {
+                     throw 'TypeError: The sound category you specified in your options was invalid!';
+                  }
+               }
+               if (_.def(options.volume) && typeof options.volume !== 'number') {
+                  throw 'TypeError: The volume level you specified in your options was invalid!';
+               }
+               if (_.def(options.pitch) && typeof options.pitch !== 'number') {
+                  throw 'TypeError: The pitch value you specified in your options was invalid!';
+               }
+               if (player) {
+                  instance.playSound(
+                     options.location || instance.getLocation(),
+                     noise,
+                     options.category || $.soundCategory.master,
+                     _.def(options.volume) ? options.volume : 1,
+                     _.def(options.pitch) ? options.pitch : 1
+                  );
+               }
+            } else {
+               throw 'TypeError: That sound does not exist!';
             }
          },
-         get tag () {
-            return util.tags(instance).get();
+         get tags () {
+            return _.array(instance.getScoreboardTags());
          },
-         set tag (value) {
-            util.tags(instance).set(value);
+         set tags (value) {
+            if (_.iterable(value)) {
+               const input = value.map((entry) => {
+                  if (typeof entry === 'string') return entry;
+                  else throw 'TypeError: That array contains a non-string value!';
+               });
+               instance.getScoreboardTags().clear();
+               input.map((entry) => instance.getScoreboardTags().add(entry));
+            } else {
+               throw 'TypeError: You must supply an array of string values!';
+            }
          },
          text: (message, type, raw) => {
             if (player) {
@@ -548,9 +481,14 @@ export const wrapper = (_, $) => {
                   case 'title':
                      instance.sendTitle(...message.split('\n'), 10, 70, 20);
                      break;
-                  default:
+                  case 'chat':
+                  case 'standard':
+                  case 'text':
+                  case undefined:
                      instance.sendMessage(message);
                      break;
+                  default:
+                     throw 'TypeError: That is not a valid message type!';
                }
             }
          },
@@ -558,32 +496,51 @@ export const wrapper = (_, $) => {
             return instance.getUniqueId().toString();
          },
          get vector () {
-            return thing.location.vector;
+            return thing.location.toVector();
          },
          set vector (value) {
-            thing.location.vector = value;
-         },
-         get velocity () {
-            return $(instance.getVelocity());
-         },
-         set velocity (value) {
-            instance.setVelocity($(':standardize', value));
-         },
-         get vitality () {
-            if (alive) {
-               return instance.getMaxHealth();
+            value = $('+').instance(value);
+            typeof value.getLocation === 'function' && (value = value.getLocation());
+            if (value instanceof Vector || value instanceof Location) {
+               thing.location = $(thing.location).x(value.getX()).y(value.getY()).z(value.getZ());
+            } else {
+               throw 'TypeError: You must specify a location, vector, or object with a location or vector attached!';
             }
          },
+         get velocity () {
+            return instance.getVelocity();
+         },
+         set velocity (value) {
+            value = $('+').instance(value);
+            typeof value.getLocation === 'function' && (value = value.getLocation());
+            value instanceof Location && (value = value.toVector());
+            if (value instanceof Vector) {
+               instance.setVelocity(value);
+            } else {
+               throw 'TypeError: You must specify a location, vector, or object with a location or vector attached!';
+            }
+         },
+         get vitality () {
+            if (alive) return instance.getMaxHealth();
+         },
          set vitality (value) {
-            if (alive) {
-               instance.setMaxHealth(value);
+            if (typeof value === 'number') {
+               if (alive) instance.setMaxHealth(value);
+            } else {
+               throw 'TypeError: You must supply a numeric value!';
             }
          },
          get world () {
             return instance.getLocation().getWorld();
          },
          set world (world) {
-            instance.teleport(world.getSpawnLocation());
+            if (_.def(world)) {
+               world instanceof World || (world = server.getWorld(world));
+               if (_.def(world)) return instance.teleport(world.getSpawnLocation());
+               else throw 'ReferenceError: That world does not exist!';
+            } else {
+               throw 'TypeError: You must specify a world, world name or UUID!';
+            }
          }
       };
       return thing;
@@ -592,7 +549,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (input) => {
-      return $(`?${input.lifeform}`, $(input.location)).nbt(input.nbt);
+      return $(`?${input.lifeform}`, $(input.location)).nbt(input.nbt).instance();
    };
 };
 
@@ -600,110 +557,51 @@ export const chain = (_, $) => {
    return {
       ai: 'setter',
       attribute: 'setterNest',
-      bar: 'lister',
+      bar: 'runnerLink',
+      bars: 'setterLink',
       block: 'getterLink',
       collidable: 'setter',
       data: 'appender',
       distance: 'runner',
       effect: 'setterNest',
-      equipment: 'setterNest',
+      equipment: 'setterLinkNest',
       glowing: 'setter',
       health: 'setter',
       instance: 'getter',
-      inventory: 'setter',
+      inventory: 'setterLink',
       invulnerable: 'setter',
       item: 'setterLink',
-      lifeform: 'setter',
+      jumping: 'getter',
+      lifeform: 'getter',
       location: 'setterLink',
       mode: 'setter',
       name: 'setter',
       nbt: 'appender',
       note: 'runner',
-      passenger: 'lister',
-      player: 'getterLink',
+      passengers: 'setter',
+      player: 'getter',
       remove: 'voider',
       serialize: (thing) => {
-         return {
-            format: 'entity',
-            lifeform: thing.lifeform,
-            location: thing.location,
-            nbt: data.nbt
-         };
+         if (_.def(thing)) {
+            return {
+               format: 'entity',
+               lifeform: thing.lifeform,
+               location: thing.location,
+               nbt: data.nbt
+            };
+         } else {
+            return null;
+         }
       },
       silent: 'setter',
       sneaking: 'getter',
       sound: 'voider',
-      tag: 'lister',
+      tags: 'setter',
       text: 'voider',
       uuid: 'getter',
-      vector: 'setterLink',
-      velocity: 'setterLink',
+      vector: 'appenderLink',
+      velocity: 'appenderLink',
       vitality: 'setter',
       world: 'setter'
    };
-   /*
-   options: (...args) => {
-      if (args[0] === undefined) {
-         return entities.map((entity) => entity.options());
-      } else if (typeof args[0] === 'string') {
-         if (args[1] === undefined) {
-            return entities.map((entity) => entity.options(args[0]));
-         } else {
-            entities.map((entity) => entity.options(...args));
-            return that;
-         }
-      } else {
-         entities.map((entity) => {
-            if (typeof args[0] === 'function') {
-               args[0](entity.options());
-            } else if (typeof args[0] === 'object') {
-               _.entries(args[0]).forEach((entry) => entity.options(entry.key, entry.value));
-            } else {
-               args.forEach((arg) => entity.options(arg, !entity.options(arg)));
-            }
-         });
-         return that;
-      }
-   },
-   player: (...args) => {
-      if (typeof args[0] === 'function') {
-         entities.map((entity) => args[0](_.player(entity.instance.getUniqueId())));
-         return that;
-      } else {
-         return entities.map((entity) => _.player(entity.instance.getUniqueId()));
-      }
-   }
-   */
 };
-
-// /js $(self).sound('block_note_block_bit', { pitch: x })
-
-/*
-[
-   0.5, //                0.5
-   0.5297315471796477, // 0.52972412109375
-   0.5612310241546865, // 0.56121826171875
-   0.5946035575013605, // 0.5945892333984375
-   0.6299605249474366, // 0.6299591064453125
-   0.6674199270850172,
-   0.7071067811865476,
-   0.7491535384383408,
-   0.7937005259840997,
-   0.8408964152537145,
-   0.8908987181403393,
-   0.9438743126816934,
-   1,
-   1.0594630943592953,
-   1.122462048309373,
-   1.189207115002721,
-   1.2599210498948732,
-   1.3348398541700344,
-   1.4142135623730951,
-   1.4983070768766815,
-   1.5874010519681996,
-   1.681792830507429,
-   1.7817974362806785,
-   1.887748625363387,
-   2
-]
-*/

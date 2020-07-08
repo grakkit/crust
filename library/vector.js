@@ -5,6 +5,17 @@ const Location = Java.type('org.bukkit.Location');
 export const wrapper = (_, $) => {
    return (instance) => {
       const thing = {
+         // support velocity manip with velocity object, not just XYZ
+         // add subtract velocity so we can do stuff like this
+         /*
+         x=$(self).location().vector().instance();
+         y=$('@e[tag=b]').location().vector().instance()[0];
+         self.setVelocity(x.clone().subtract(y))
+         */
+         // but like this instead
+         /*
+         $(self).velocity($(self).vector().subtract($('@e[tag=b]')).first())
+         */
          add: (x, y, z, source) => {
             if (_.def(z)) {
                if (_.def(source)) {
@@ -92,12 +103,16 @@ export const chain = (_, $) => {
       instance: 'getter',
       location: 'runnerLink',
       serialize: (thing) => {
-         return {
-            format: 'vector',
-            x: thing.x,
-            y: thing.y,
-            z: thing.z
-         };
+         if (_.def(thing)) {
+            return {
+               format: 'vector',
+               x: thing.x,
+               y: thing.y,
+               z: thing.z
+            };
+         } else {
+            return null;
+         }
       },
       x: 'setter',
       y: 'setter',

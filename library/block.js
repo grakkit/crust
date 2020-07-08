@@ -9,10 +9,14 @@ export const wrapper = (_, $) => {
             return state instanceof PersistentDataHolder ? $('+').data(state.getPersistentDataContainer()) : {};
          },
          set data (value) {
-            const state = instance.getState();
-            if (state instanceof PersistentDataHolder) {
-               $('+').data(state.getPersistentDataContainer(), value);
-               state.update(true);
+            if (typeof value === 'object') {
+               const state = instance.getState();
+               if (state instanceof PersistentDataHolder) {
+                  $('+').data(state.getPersistentDataContainer(), value);
+                  state.update(true);
+               }
+            } else {
+               throw 'TypeError: You must supply an object or null value!';
             }
          },
          distance: (target, option) => {
@@ -99,11 +103,15 @@ export const chain = (_, $) => {
       location: 'getterLink',
       material: 'setter',
       serialize: (thing) => {
-         return {
-            format: 'block',
-            data: thing.instance.getBlockData().getAsString(),
-            state: $(`!${thing.material}`).meta((meta) => meta.setBlockState(thing.instance.getState())).nbt()
-         };
+         if (_.def(thing)) {
+            return {
+               format: 'block',
+               data: thing.instance.getBlockData().getAsString(),
+               state: $(`!${thing.material}`).meta((meta) => meta.setBlockState(thing.instance.getState())).nbt()
+            };
+         } else {
+            return null;
+         }
       },
       spawn: 'runnerLink',
       vector: 'getterLink',

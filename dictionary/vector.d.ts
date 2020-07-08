@@ -52,6 +52,8 @@ export type DistanceTargetNest =
  * 
  * `VectorChainer.distance(targets, flat?)`
  * 
+ * `VectorChainer.instance()`
+ * 
  * `VectorChainer.location(world, pitch?, yaw?)`
  * 
  * `VectorChainer.serialize()`
@@ -116,7 +118,7 @@ export interface VectorChainer {
     */
    x(): number;
    /**
-    * ### `VectorChainerNest.x(value)`
+    * ### `VectorChainer.x(value)`
     * Sets the X value of this vector to the given input.
     * @param value The X value to set
     */
@@ -127,7 +129,7 @@ export interface VectorChainer {
     */
    y(): number;
    /**
-    * ### `VectorChainerNest.y(value)`
+    * ### `VectorChainer.y(value)`
     * Sets the Y value of this vector to the given input.
     * @param value The Y value to set
     */
@@ -138,7 +140,7 @@ export interface VectorChainer {
     */
    z(): number;
    /**
-    * ### `VectorChainerNest.z(value)`
+    * ### `VectorChainer.z(value)`
     * Sets the Z value of this vector to the given input.
     * @param value The Z value to set
     */
@@ -154,6 +156,8 @@ export interface VectorChainer {
  * `VectorChainerNest.distance(target, flat?)`
  * 
  * `VectorChainerNest.distance(targets, flat?)`
+ * 
+ * `VectorChainerNest.instance()`
  * 
  * `VectorChainerNest.location(world, pitch?, yaw?)`
  * 

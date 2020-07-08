@@ -227,10 +227,14 @@ export const wrapper = (_, $) => {
             if (meta) return $('+').data(meta.getPersistentDataContainer());
          },
          set data (value) {
-            thing.meta = (meta) => meta && $('+').data(meta.getPersistentDataContainer(), value);
+            if (typeof value === 'object') {
+               thing.meta = (meta) => meta && $('+').data(meta.getPersistentDataContainer(), value);
+            } else {
+               throw 'TypeError: You must supply an object or null value!';
+            }
          },
          get destroy () {
-            util.adventure(thing, 'destroy').get();
+            return util.adventure(thing, 'destroy').get();
          },
          set destroy (value) {
             if (_.iterable(value)) meta && util.adventure(thing, 'destroy').set(value);
@@ -357,34 +361,39 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (input) => {
-      return $(`!${input.material}`).amount(input.amount).nbt(input.nbt);
+      return $(`!${input.material}`).amount(input.amount).nbt(input.nbt).instance();
    };
 };
 
 export const chain = (_, $) => {
    return {
       amount: 'setter',
-      attribute: 'listerNest',
       damage: 'setter',
       data: 'appender',
-      destroy: 'lister',
+      destroy: 'setter',
       drop: 'runnerLink',
       enchantment: 'setterNest',
-      flag: 'lister',
+      flags: 'setter',
       instance: 'getter',
       lore: 'setter',
       material: 'setter',
       meta: 'setter',
+      modifier: 'setter',
+      modifiers: 'setterLink',
       name: 'setter',
       nbt: 'appender',
-      place: 'lister',
+      place: 'setter',
       serialize: (thing) => {
-         return {
-            format: 'item',
-            material: thing.material,
-            amount: thing.amount,
-            nbt: thing.nbt
-         };
+         if (_.def(thing)) {
+            return {
+               format: 'item',
+               material: thing.material,
+               amount: thing.amount,
+               nbt: thing.nbt
+            };
+         } else {
+            return null;
+         }
       },
       title: 'getter',
       unbreakable: 'setter'

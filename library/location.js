@@ -1,4 +1,7 @@
+const World = Java.type('org.bukkit.World');
+const Vector = Java.type('org.bukkit.util.Vector');
 const Location = Java.type('org.bukkit.Location');
+const Material = Java.type('org.bukkit.Material');
 
 export const wrapper = (_, $) => {
    return (instance) => {
@@ -72,7 +75,7 @@ export const wrapper = (_, $) => {
             return instance.getWorld();
          },
          set world (value) {
-            if (!value instanceof World) value = server.getWorld(value);
+            value instanceof World || (value = server.getWorld(value));
             if (_.def(value)) return instance.setWorld(value);
             else throw 'ReferenceError: That world does not exist!';
          },
@@ -111,7 +114,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (thing) => {
-      return new Location(server.getWorld(thing.world), thing.x, thing.y, thing.z, thing.pitch, thing.yaw);
+      return $(new Location(server.getWorld(thing.world), thing.x, thing.y, thing.z, thing.pitch, thing.yaw));
    };
 };
 
@@ -123,15 +126,19 @@ export const chain = (_, $) => {
       instance: 'getter',
       pitch: 'setter',
       serialize: (thing) => {
-         return {
-            format: 'location',
-            pitch: thing.pitch,
-            world: thing.world.getUID().toString(),
-            x: thing.x,
-            y: thing.y,
-            yaw: thing.yaw,
-            z: thing.z
-         };
+         if (_.def(thing)) {
+            return {
+               format: 'location',
+               pitch: thing.pitch,
+               world: thing.world.getUID().toString(),
+               x: thing.x,
+               y: thing.y,
+               yaw: thing.yaw,
+               z: thing.z
+            };
+         } else {
+            return null;
+         }
       },
       spawn: 'runnerLink',
       vector: 'setterLink',

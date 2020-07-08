@@ -46,15 +46,15 @@ export const builder = (_, $) => {
             const properties = {
                appender: (property) => {
                   return (...args) => {
-                     if (!_.def(args[0])) {
-                        return things.map((thing) => thing[property]);
+                     if (args.length === 0) {
+                        return things.map((thing) => (!_.def(thing) ? thing : thing[property]));
                      } else {
                         things.map((thing) => {
                            if (typeof args[0] === 'function') {
-                              const value = thing[property];
+                              const value = !_.def(thing) ? thing : thing[property] || {};
                               args[0](value);
-                              thing[property] = value;
-                           } else {
+                              !_.def(thing) ? thing : (thing[property] = value);
+                           } else if (thing) {
                               thing[property] = args[0];
                            }
                         });
@@ -62,63 +62,66 @@ export const builder = (_, $) => {
                      }
                   };
                },
+               appenderLink: (property) => {
+                  return (...args) => {
+                     if (args.length === 0) {
+                        if (slayer) return [ $(things.map((thing) => (!_.def(thing) ? thing : thing[property]))[0]) ];
+                        else return $(things.map((thing) => (!_.def(thing) ? thing : thing[property])));
+                     } else {
+                        if (typeof args[0] === 'function') {
+                           things.map((thing) => {
+                              const value = $(!_.def(thing) ? thing : thing[property] || {});
+                              args[0](value);
+                              !_.def(thing) ? thing : (thing[property] = value.instance());
+                           });
+                        } else {
+                           things.map((thing) => {
+                              return !_.def(thing) ? thing : (thing[property] = $('+').instance(args[0]));
+                           });
+                        }
+                        return that;
+                     }
+                  };
+               },
                getter: (property) => {
                   return (...args) => {
                      if (typeof args[0] === 'function') {
-                        things.map((thing) => args[0](thing[property]));
+                        things.map((thing) => args[0](!_.def(thing) ? thing : thing[property]));
                         return that;
                      } else {
-                        return things.map((thing) => thing[property]);
+                        return things.map((thing) => (!_.def(thing) ? thing : thing[property]));
                      }
                   };
                },
                getterLink: (property) => {
                   return (...args) => {
                      if (typeof args[0] === 'function') {
-                        args[0]($(things.map((thing) => thing[property])));
+                        args[0]($(things.map((thing) => (!_.def(thing) ? thing : thing[property]))));
                         return that;
                      } else {
-                        if (slayer) return [ $(things.map((thing) => thing[property])[0]) ];
-                        else return $(things.map((thing) => thing[property]));
+                        if (slayer) return [ $(things.map((thing) => (!_.def(thing) ? thing : thing[property]))[0]) ];
+                        else return $(things.map((thing) => (!_.def(thing) ? thing : thing[property])));
                      }
                   };
                },
-               lister: (property) => {
+               getterNest: (property) => {
                   return (...args) => {
-                     if (!_.def(args[0])) {
-                        return things.map((thing) => thing[property]);
-                     } else {
-                        things.map((thing) => {
-                           if (typeof args[0] === 'function') {
-                              args[0](thing[property]);
-                           } else {
-                              thing[property].clear();
-                              args.forEach(thing[property].add);
-                           }
-                        });
-                        return that;
-                     }
-                  };
-               },
-               listerNest: (property) => {
-                  return (...args) => {
-                     if (!_.def(args[0])) {
-                        return things.map((thing) => thing[property] || {});
-                     } else if (!_.def(args[1])) {
+                     if (args.length === 0) {
+                        return things.map((thing) => (!_.def(thing) ? thing : thing[property] || {}));
+                     } else if (args.length === 1) {
                         return things.map((thing) => {
                            if (typeof args[0] === 'function') {
-                              return args[0](thing[property] || {});
-                           } else {
+                              return args[0](!_.def(thing) ? thing : thing[property] || {});
+                           } else if (thing) {
                               return (thing[property] || {})[args[0]];
                            }
                         });
                      } else {
                         things.map((thing) => {
                            if (typeof args[1] === 'function') {
-                              args[1]((thing[property] || {})[args[0]]);
-                           } else if (thing[property]) {
-                              thing[property][args[0]].clear();
-                              args.slice(1).forEach(thing[property][args[0]].add);
+                              args[1](!_.def(thing) ? thing : (thing[property] || {})[args[0]]);
+                           } else if (thing) {
+                              (thing[property] || {})[args[0]] = args[1];
                            }
                         });
                         return that;
@@ -138,24 +141,27 @@ export const builder = (_, $) => {
                },
                runner: (property) => {
                   return (...args) => {
-                     return things.map((thing) => thing[property](...args));
+                     return things.map((thing) => (!_.def(thing) ? thing : thing[property](...args)));
                   };
                },
                runnerLink: (property) => {
                   return (...args) => {
-                     if (slayer) return [ $(things.map((thing) => thing[property](...args))[0]) ];
-                     else return $(things.map((thing) => thing[property](...args)));
+                     if (slayer) {
+                        return [ $(things.map((thing) => (!_.def(thing) ? thing : thing[property](...args)))[0]) ];
+                     } else {
+                        return $(things.map((thing) => (!_.def(thing) ? thing : thing[property](...args))));
+                     }
                   };
                },
                setter: (property) => {
                   return (...args) => {
-                     if (!_.def(args[0])) {
-                        return things.map((thing) => thing[property]);
+                     if (args.length === 0) {
+                        return things.map((thing) => (!_.def(thing) ? thing : thing[property]));
                      } else {
                         things.map((thing) => {
                            if (typeof args[0] === 'function') {
-                              args[0](thing[property]);
-                           } else {
+                              args[0](!_.def(thing) ? thing : thing[property]);
+                           } else if (thing) {
                               thing[property] = args[0];
                            }
                         });
@@ -165,33 +171,64 @@ export const builder = (_, $) => {
                },
                setterLink: (property) => {
                   return (...args) => {
-                     if (!_.def(args[0])) {
-                        if (slayer) return [ $(things.map((thing) => thing[property])[0]) ];
-                        else return $(things.map((thing) => thing[property]));
+                     if (args.length === 0) {
+                        if (slayer) return [ $(things.map((thing) => (!_.def(thing) ? thing : thing[property]))[0]) ];
+                        else return $(things.map((thing) => (!_.def(thing) ? thing : thing[property])));
                      } else {
-                        if (typeof args[0] === 'function') args[0]($(things.map((thing) => thing[property])));
-                        else things.map((thing) => (thing[property] = $('+').instance(args[0])));
+                        if (typeof args[0] === 'function') {
+                           args[0]($(things.map((thing) => (!_.def(thing) ? thing : thing[property]))));
+                        } else {
+                           things.map((thing) => {
+                              return !_.def(thing) ? thing : (thing[property] = $('+').instance(args[0]));
+                           });
+                        }
+                        return that;
+                     }
+                  };
+               },
+               setterLinkNest: (property) => {
+                  return (...args) => {
+                     if (args.length === 0) {
+                        return things.map((thing) => (!_.def(thing) ? thing : thing[property] || {}));
+                     } else if (args.length === 1) {
+                        const output = things.map((thing) => {
+                           if (typeof args[0] === 'function') {
+                              return args[0](!_.def(thing) ? thing : thing[property] || {});
+                           } else if (thing) {
+                              return (thing[property] || {})[args[0]];
+                           }
+                        });
+                        if (slayer) return [ $(output[0]) ];
+                        else return $(output);
+                     } else {
+                        things.map((thing) => {
+                           if (typeof args[1] === 'function') {
+                              args[1](!_.def(thing) ? thing : (thing[property] || {})[args[0]]);
+                           } else if (thing) {
+                              (thing[property] || {})[args[0]] = args[1];
+                           }
+                        });
                         return that;
                      }
                   };
                },
                setterNest: (property) => {
                   return (...args) => {
-                     if (!_.def(args[0])) {
-                        return things.map((thing) => thing[property] || {});
-                     } else if (!_.def(args[1])) {
+                     if (args.length === 0) {
+                        return things.map((thing) => (!_.def(thing) ? thing : thing[property] || {}));
+                     } else if (args.length === 1) {
                         return things.map((thing) => {
                            if (typeof args[0] === 'function') {
-                              return args[0](thing[property] || {});
-                           } else {
+                              return args[0](!_.def(thing) ? thing : thing[property] || {});
+                           } else if (thing) {
                               return (thing[property] || {})[args[0]];
                            }
                         });
                      } else {
                         things.map((thing) => {
                            if (typeof args[1] === 'function') {
-                              args[1]((thing[property] || {})[args[0]]);
-                           } else {
+                              args[1](!_.def(thing) ? thing : (thing[property] || {})[args[0]]);
+                           } else if (thing) {
                               (thing[property] || {})[args[0]] = args[1];
                            }
                         });
@@ -201,7 +238,7 @@ export const builder = (_, $) => {
                },
                voider: (property) => {
                   return (...args) => {
-                     things.map((thing) => thing[property](...args));
+                     things.map((thing) => (!_.def(thing) ? thing : thing[property](...args)));
                      return that;
                   };
                }
@@ -336,7 +373,7 @@ export const prefixes = [
    'com.destroystokyo.paper.event.server'
 ];
 
-export const utility = (_, $) => {
+export const utility = (_, $, jx) => {
    return {
       backs: (source) => {
          return _.strain($[source], (entry) => entry.key === _.upper(entry.key));
@@ -345,16 +382,19 @@ export const utility = (_, $) => {
          const key = new NamespacedKey(core.plugin, 'jx');
          const type = PersistentDataType.STRING;
          if (_.def(value)) container.set(key, type, JSON.stringify(value, true));
+         else if (value === null) container.remove(key);
          else return JSON.parse(container.get(key, type));
       },
       distance: (source, target, option) => {
-         typeof source.location === 'function' && (source = source.location());
-         typeof target.location === 'function' && (target = target.location());
+         _.def(source) && typeof source.location === 'function' && (source = source.location());
+         _.def(target) && typeof target.location === 'function' && (target = target.location());
          source = $('+').instance(source);
          target = $('+').instance(target);
          let x = _.iterable(source) ? source[0] : source;
+         typeof x.getLocation === 'function' && (x = x.getLocation());
          x = x instanceof Location || x instanceof Vector;
          let y = _.iterable(target) ? target[0] : target;
+         typeof y.getLocation === 'function' && (y = y.getLocation());
          y = y instanceof Location || y instanceof Vector;
          if (x && y) {
             if (_.iterable(source) && _.iterable(target)) {
@@ -374,23 +414,24 @@ export const utility = (_, $) => {
             throw 'invalid-both';
          }
       },
-      drop: (location, item, option) => {
-         location = $('+').instance(location);
+      drop: (source, item, option) => {
+         _.def(source) && typeof source.location === 'function' && (source = source.location());
+         source = $('+').instance(source);
          item = $('+').instance(item);
-         let x = _.iterable(location) ? location[0] : location;
+         let x = _.iterable(source) ? source[0] : source;
+         typeof x.getLocation === 'function' && (x = x.getLocation());
          x = x instanceof Location;
          let y = _.iterable(item) ? item[0] : item;
          y = y instanceof ItemStack;
          if (x && y) {
-            const method = `dropItem${option ? 'Naturally' : ''}`;
-            if (_.iterable(location) && _.iterable(item)) {
-               return location.map((from) => item.map((to) => from.getWorld()[method](to)));
-            } else if (_.iterable(location)) {
-               return location.map((from) => from.getWorld()[method](item));
+            if (_.iterable(source) && _.iterable(item)) {
+               return source.map((from) => item.map((to) => _.drop(from, to, option)));
+            } else if (_.iterable(source)) {
+               return source.map((from) => _.drop(from, item, option));
             } else if (_.iterable(item)) {
-               return item.map((to) => location.getWorld()[method](to));
+               return item.map((to) => _.drop(source, to, option));
             } else {
-               return location.getWorld()[method](item);
+               return _.drop(source, item, option);
             }
          } else if (x) {
             throw 'invald-item';
@@ -407,13 +448,19 @@ export const utility = (_, $) => {
          return _.strain($[source], (entry) => entry.key === _.lower(entry.key));
       },
       instance: (thing, callback) => {
-         if (typeof thing === 'object' && typeof thing.instance === 'function') {
-            const output = thing.instance();
-            if (typeof callback === 'function') {
-               if (_.iterable(output)) return output.map(callback);
-               else return callback(output);
+         if (typeof thing === 'object') {
+            if (typeof thing.instance === 'function') {
+               const output = thing.instance();
+               if (typeof callback === 'function') {
+                  if (_.iterable(output)) return output.map(callback);
+                  else return callback(output);
+               } else {
+                  return output;
+               }
+            } else if (typeof thing.format === 'string') {
+               return jx[thing.format].parser(thing);
             } else {
-               return output;
+               return thing;
             }
          } else {
             return thing;
@@ -457,7 +504,11 @@ export const receiver = (_, $) => {
                return _.def(instance) ? jx[type].wrapper(instance) : instance;
             })
          );
-         return _.extend(that, { [Symbol.iterator]: (...args) => input.values(...args) });
+         return _.extend(that, {
+            [Symbol.iterator]: (...args) => input.values(...args),
+            first: () => $(_.flat(input)[0]),
+            last: () => $(_.flat(input)[input.length - 1])
+         });
       } else {
          const that = jx[type].chainer([ _.def(input) ? jx[type].wrapper(input) : input ], 1);
          const slayer = _.object(jx[type].links, (link) => ({

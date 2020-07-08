@@ -5,7 +5,14 @@ const UUID = Java.type('java.util.UUID');
 const Location = Java.type('org.bukkit.Location');
 const Runnable = Java.extend(Java.type('java.lang.Runnable'));
 const ArrayList = Java.type('java.util.ArrayList');
+const NBTTagInt = nms.NBTTagInt;
+const NBTTagByte = nms.NBTTagByte;
 const NBTTagList = nms.NBTTagList;
+const NBTTagLong = nms.NBTTagLong;
+const NBTTagFloat = nms.NBTTagFloat;
+const NBTTagShort = nms.NBTTagShort;
+const NBTTagDouble = nms.NBTTagDouble;
+const NBTTagString = nms.NBTTagString;
 const SecureRandom = Java.type('java.security.SecureRandom');
 const NBTTagCompound = nms.NBTTagCompound;
 const NBTTagIntArray = nms.NBTTagIntArray;
@@ -129,6 +136,8 @@ export const _ = {
       return output;
    },
    dist: (source, target, flat) => {
+      typeof source.getLocation === 'function' && (source = source.getLocation());
+      typeof target.getLocation === 'function' && (target = target.getLocation());
       if (source instanceof Location && target instanceof Location && source.getWorld() !== target.getWorld()) {
          return Infinity;
       }
@@ -136,6 +145,11 @@ export const _ = {
       var deltaY = flat ? 0 : source.getY() - target.getY();
       var deltaZ = source.getZ() - target.getZ();
       return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+   },
+   drop: (source, item, option) => {
+      typeof source.getLocation === 'function' && (source = source.getLocation());
+      const method = `dropItem${option ? 'Naturally' : ''}`;
+      return source.getWorld()[method](source, item);
    },
    entries: (object) => {
       return _.keys(object).map((key) => {
@@ -145,10 +159,12 @@ export const _ = {
    extend: (object, ...objects) => {
       return Object.assign(object, ...objects);
    },
-   flat: (array) => {
-      return array.filter((entry) => {
-         return entry;
-      });
+   flat: (array, consumer) => {
+      consumer ||
+         (consumer = (entry) => {
+            return _.def(entry);
+         });
+      return array.filter(consumer);
    },
    interval: (script, period) => {
       const state = { iteration: null };
@@ -231,28 +247,34 @@ export const _ = {
       return _.extend({}, ..._.flat(array.map(consumer)));
    },
    parse: (data) => {
-      console.log(core.output(data.value));
       try {
          switch (data.type) {
             case 'None':
                return data.value;
             case 'Int':
+               return NBTTagInt.a(data.value);
             case 'Float':
+               return NBTTagFloat.a(data.value);
             case 'Double':
+               return NBTTagDouble.a(data.value);
             case 'Long':
+               return NBTTagLong.a(data.value);
             case 'Short':
+               return NBTTagShort.a(data.value);
             case 'Byte':
+               return NBTTagByte.a(data.value);
             case 'String':
-               const temp = new NBTTagCompound();
-               temp[`set${data.type}`]('x', data.value);
-               return temp.get('x');
+               return NBTTagString.a(data.value);
             case 'End':
                return null;
             case 'List':
                const list = new NBTTagList();
                data.value.forEach((entry) => list.add(_.parse(entry)));
+               return list;
             case 'ByteArray':
                const bytes = new NBTTagByteArray(_.collect());
+               global.test = bytes;
+               global.test2 = data.value;
                data.value.forEach((entry) => bytes.add(_.parse(entry)));
                return bytes;
             case 'IntArray':
@@ -264,9 +286,9 @@ export const _ = {
                _.entries(data.value).forEach((entry) => compound.set(entry.key, _.parse(entry.value)));
                return compound;
          }
-      } catch (error) {
-         global.test = data;
-         console.log(error.stack);
+      } catch (err0) {
+         console.error(err0);
+         throw err0;
       }
    },
    pascal: (string, separator) => {
@@ -381,13 +403,25 @@ export const _ = {
          const type = data.getClass().getCanonicalName().split('NBTTag')[1];
          switch (type) {
             case 'Int':
+               value = data.asInt();
+               break;
             case 'Float':
+               value = data.asFloat();
+               break;
             case 'Double':
+               value = data.asDouble();
+               break;
             case 'Long':
+               value = data.asLong();
+               break;
             case 'Short':
+               value = data.asShort();
+               break;
             case 'Byte':
+               value = data.asByte();
+               break;
             case 'String':
-               value = data[`as${type}`]();
+               value = data.asString();
                break;
             case 'End':
                value = null;
@@ -441,7 +475,7 @@ export const _ = {
    strain: (object, consumer) => {
       consumer ||
          (consumer = (entry) => {
-            return entry.value;
+            return _.def(entry.value);
          });
       return _.object(_.entries(object).filter(consumer));
    },
