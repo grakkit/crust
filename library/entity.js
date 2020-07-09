@@ -1,8 +1,10 @@
 const UUID = Java.type('java.util.UUID');
+const Sound = Java.type('org.bukkit.Sound');
 const Entity = Java.type('org.bukkit.entity.Entity');
 const Player = Java.type('org.bukkit.entity.Player');
 const Vector = Java.type('org.bukkit.util.Vector');
 const Location = Java.type('org.bukkit.Location');
+const ItemStack = Java.type('org.bukkit.inventory.ItemStack');
 const LivingEntity = Java.type('org.bukkit.entity.LivingEntity');
 const Attributable = Java.type('org.bukkit.attribute.Attributable');
 const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
@@ -367,7 +369,7 @@ export const wrapper = (_, $) => {
             instance.getHandle().load(_.parse(value));
          },
          note: (sound, pitch, options) => {
-            thing.sound(sound, _.extend(options || {}, { pitch: util.notes[pitch || 0] }));
+            thing.sound(sound, Object.assign(options || {}, { pitch: util.notes[pitch || 0] }));
          },
          get passengers () {
             return $(_.array(instance.getPassengers()));
@@ -549,7 +551,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (input) => {
-      return $(`?${input.lifeform}`, $(input.location)).nbt(input.nbt).instance();
+      return $(`?${input.lifeform}`, $(input.location)).nbt(input.nbt);
    };
 };
 

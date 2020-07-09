@@ -1,201 +1,9 @@
 const UUID = Java.type('java.util.UUID');
 const Material = Java.type('org.bukkit.Material');
 const ItemFlag = Java.type('org.bukkit.inventory.ItemFlag');
-const AttributeModifier = Java.type('org.bukkit.attribute.AttributeModifier');
+const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
 
 export const wrapper = (_, $) => {
-   const util = {
-      adventure: (thing, type) => {
-         type = _.pascal((type += 'ableKeys'));
-         const k = {
-            get eys () {
-               return thing.meta ? _.array(thing.meta[`get${type}`]()) : [];
-            }
-         };
-         return _.mirror({
-            get array () {
-               return k.eys.map((key) => key.getKey());
-            },
-            add: (value) => {
-               value instanceof Material || (value = $('+').fronts('material')[value]);
-               if (value) thing.meta = (meta) => meta && meta[`set${type}`](_.collect(...k.eys, value.getKey()));
-               else throw 'TypeError: That is not a valid material!';
-            },
-            remove: (value) => {
-               value instanceof Material || (value = $('+').fronts('material')[value]);
-               if (value) {
-                  thing.meta = (meta) => meta && meta[`set${type}`](_.collect(...k.eys.filter((key) => value !== key)));
-               } else {
-                  throw 'TypeError: That is not a valid material!';
-               }
-            },
-            clear: () => {
-               thing.meta = (meta) => meta && meta[`set${type}`](_.collect());
-            }
-         });
-      },
-      flags: (thing) => {
-         return _.mirror({
-            get array () {
-               if (thing.meta) {
-                  return _.array(thing.meta.getItemFlags()).map((flag) => $('+').backs('itemFlag')[flag]);
-               } else {
-                  return [];
-               }
-            },
-            add: (value) => {
-               value instanceof ItemFlag || (value = $('+').fronts('itemFlag')[value]);
-               if (value) thing.meta = (meta) => meta && meta.addItemFlags([ value ]);
-               else throw 'TypeError: That is not a valid item flag!';
-            },
-            remove: (value) => {
-               value instanceof ItemFlag || (value = $('+').fronts('itemFlag')[value]);
-               if (value) thing.meta = (meta) => meta && meta.removeItemFlags([ value ]);
-               else throw 'TypeError: That is not a valid item flag!';
-            },
-            clear: () => {
-               thing.meta = (meta) => meta && meta.removeItemFlags(..._.keys($('+').backs('itemFlag')));
-            }
-         });
-      },
-      modifier: {
-         parse: (modifier) => {
-            return new AttributeModifier(
-               _.uuid(modifier.uuid),
-               modifier.name || '',
-               modifier.amount || 0,
-               $.amOperation[modifier.operation || 'add_number'],
-               $.equipmentSlot[modifier.slot] || null
-            );
-         },
-         serialize: (thing, attribute, modifier) => {
-            const uuid = modifier.getUniqueId().toString();
-            const update = (key, value) => {
-               thing.meta = (meta) => {
-                  meta.removeAttributeModifier(attribute, util.modifier.parse({ uuid: uuid }));
-                  modifier = util.modifier.parse(_.extend({}, internal, { [key]: value }));
-                  meta.addAttributeModifier(attribute, modifier);
-               };
-            };
-            const internal = {
-               get uuid () {
-                  return uuid;
-               },
-               get amount () {
-                  return modifier.getAmount();
-               },
-               set amount (value) {
-                  update('amount', value);
-               },
-               get name () {
-                  return modifier.getName();
-               },
-               set name (value) {
-                  update('name', value);
-               },
-               get operation () {
-                  return $.amOperation[modifier.getOperation()];
-               },
-               set operation (value) {
-                  update('operation', value);
-               },
-               get slot () {
-                  return $.equipmentSlot[modifier.getSlot()];
-               },
-               set slot (value) {
-                  update('slot', value);
-               }
-            };
-            const external = {
-               get internal () {
-                  return internal;
-               },
-               amount: (value) => {
-                  if (value === undefined) {
-                     return internal.amount;
-                  } else {
-                     internal.amount = value;
-                     return external;
-                  }
-               },
-               name: (value) => {
-                  if (value === undefined) {
-                     return internal.name;
-                  } else {
-                     internal.name = value;
-                     return external;
-                  }
-               },
-               operation: (value) => {
-                  if (value === undefined) {
-                     return internal.operation;
-                  } else {
-                     internal.operation = value;
-                     return external;
-                  }
-               },
-               slot: (value) => {
-                  if (value === undefined) {
-                     return internal.slot;
-                  } else {
-                     internal.slot = value;
-                     return external;
-                  }
-               }
-            };
-            return external;
-         }
-      },
-      modifiers: (thing, attribute) => {
-         return _.mirror({
-            get array () {
-               if (thing.meta) {
-                  const modifiers = thing.meta.hasAttributeModifiers() && thing.meta.getAttributeModifiers(attribute);
-                  return [ ..._.array(modifiers || []) ].map((modifier) => {
-                     return _.extend(util.modifier.serialize(thing, attribute, modifier));
-                  });
-               } else {
-                  return [];
-               }
-            },
-            add: (value) => {
-               typeof value === 'number' && (value = { amount: value });
-               if (typeof value === 'object') {
-                  if (typeof value.amount === 'number') {
-                     thing.meta = (meta) => meta && meta.addAttributeModifier(attribute, util.modifier.parse(value));
-                  } else {
-                     throw 'TypeError: That is not a valid modifier object!';
-                  }
-               } else {
-                  throw 'TypeError: You must supply a numeric value or modifier object!';
-               }
-            },
-            remove: (value) => {
-               if (typeof value === 'string' || value instanceof UUID) {
-                  try {
-                     _.uuid(value);
-                     value = { uuid: value };
-                  } catch (error) {
-                     throw 'TypeError: That is not a valid UUID!';
-                  }
-               } else if (typeof value === 'object') {
-                  if (value instanceof AttributeModifier) value = { uuid: value.getUniqueID().toString() };
-                  else if (typeof value.internal === 'object') value = value.internal;
-                  if (typeof value.uuid !== 'string') {
-                     throw 'TypeError: That is not a valid modifier object!';
-                  } else {
-                     thing.meta = (meta) => meta && meta.removeAttributeModifier(attribute, util.modifier.parse(value));
-                  }
-               } else {
-                  throw 'You must supply a UUID or modifier object!';
-               }
-            },
-            clear: () => {
-               thing.meta = (meta) => meta && meta.removeAttributeModifier(attribute);
-            }
-         });
-      }
-   };
    return (instance) => {
       const meta = instance.getItemMeta();
       const thing = {
@@ -206,19 +14,12 @@ export const wrapper = (_, $) => {
             if (typeof value === 'number') instance.setAmount(_.clamp(value, 1, 127));
             else throw 'TypeError: You must supply a numeric value!';
          },
-         get attribute () {
-            return _.define($('+').fronts('attribute'), (entry) => meta && util.modifiers(thing, entry.value));
-         },
-         set attribute (value) {
-            if (_.def(value) && typeof value === 'object') meta && _.extend($(item).attribute(), value);
-            else throw 'TypeError: You must supply an object!';
-         },
          get damage () {
             if (meta) return meta.getDamage();
          },
          set damage (value) {
             if (typeof value === 'number') {
-               thing.meta = (meta) => meta && meta.setDamage(_.clamp(value, 0, instance.getType().getMaxDurability()));
+               thing.meta = (meta) => meta.setDamage(_.clamp(value, 0, instance.getType().getMaxDurability()));
             } else {
                throw 'TypeError: You must supply a numeric value!';
             }
@@ -228,17 +29,28 @@ export const wrapper = (_, $) => {
          },
          set data (value) {
             if (typeof value === 'object') {
-               thing.meta = (meta) => meta && $('+').data(meta.getPersistentDataContainer(), value);
+               thing.meta = (meta) => $('+').data(meta.getPersistentDataContainer(), value);
             } else {
                throw 'TypeError: You must supply an object or null value!';
             }
          },
-         get destroy () {
-            return util.adventure(thing, 'destroy').get();
+         get destroyable () {
+            return _.array(meta.getDestroyableKeys()).map((key) => key.getKey());
          },
-         set destroy (value) {
-            if (_.iterable(value)) meta && util.adventure(thing, 'destroy').set(value);
-            else throw 'TypeError: You must supply an array!';
+         set destroyable (value) {
+            if (_.iterable(value)) {
+               value = value.map((entry) => {
+                  typeof entry === 'string' &&
+                     (entry = entry.includes(':')
+                        ? new NamespacedKey(...entry.split(':'))
+                        : ($('+').fronts('material')[entry] || { getKey: () => {} }).getKey());
+                  if (entry instanceof NamespacedKey) return entry;
+                  else throw 'TypeError: That array contains invalid destroyable keys!';
+               });
+               thing.meta = (meta) => meta.setDestroyableKeys(_.collect(...value));
+            } else {
+               throw 'TypeError: You must supply an array of destroyable keys!';
+            }
          },
          drop: (location, option) => {
             try {
@@ -253,7 +65,7 @@ export const wrapper = (_, $) => {
                }
             }
          },
-         get enchantment () {
+         get enchantments () {
             return _.define($('+').fronts('enchantment'), (entry) => {
                if (meta) {
                   return {
@@ -280,16 +92,35 @@ export const wrapper = (_, $) => {
                }
             });
          },
-         set enchantment (value) {
-            if (_.def(value) && typeof value === 'object') meta && _.extend($(item).enchantment(), value);
-            else throw 'TypeError: You must supply an object!';
+         set enchantments (value) {
+            if (typeof value === 'object') {
+               value || (value = {});
+               try {
+                  _.keys($('+').fronts('enchantment')).forEach((key) => (thing.enchantment[key] = value[key] || null));
+               } catch (error) {
+                  throw 'TypeError: That input contains invalid entries!';
+               }
+            } else {
+               throw 'TypeError: You must supply an object or a null value!';
+            }
          },
-         get flag () {
-            return util.flags(thing).get();
+         get flags () {
+            return _.array(meta.getItemFlags()).map((flag) => $('+').backs('itemFlag')[flag]);
          },
-         set flag (value) {
-            if (_.iterable(value)) meta && util.flags(thing).set(value);
-            else throw 'TypeError: You must supply an array!';
+         set flags (value) {
+            if (_.iterable(value)) {
+               value = value.map((entry) => {
+                  entry instanceof ItemFlag || (entry = $('+').fronts('itemFlag')[entry]);
+                  if (entry) return entry;
+                  else throw 'TypeError: That is not a valid item flag!';
+               });
+               thing.meta = (meta) => {
+                  meta.removeItemFlags(..._.values($('+').fronts('itemFlag')));
+                  meta.addItemFlags(...value);
+               };
+            } else {
+               throw 'TypeError: You must supply an array!';
+            }
          },
          get instance () {
             return instance;
@@ -299,7 +130,7 @@ export const wrapper = (_, $) => {
          },
          set lore (value) {
             if (typeof value[Symbol.iterator] !== 'function') throw 'You must supply an array or string value!';
-            else thing.meta = (meta) => meta && meta.setLore(_.iterable(value) ? value : [ value ]);
+            else thing.meta = (meta) => meta.setLore(_.iterable(value) ? value : value.split('\n'));
          },
          get material () {
             return $('+').backs('material')[instance.getType()];
@@ -314,17 +145,114 @@ export const wrapper = (_, $) => {
          },
          set meta (value) {
             if (typeof value === 'function') {
-               value(meta);
-               instance.setItemMeta(meta);
+               meta && value(meta);
+               meta && instance.setItemMeta(meta);
             } else {
                throw 'TypeError: You must supply a function!';
+            }
+         },
+         modifier: (uuid) => {
+            try {
+               typeof uuid === 'string' && (uuid = _.uuid(uuid));
+            } catch (value) {
+               throw 'SyntaxError: Can not convert input to UUID!';
+            }
+            if (uuid instanceof UUID) {
+               if (meta) {
+                  let match;
+                  _.values(Object.assign({}, thing.modifiers)).forEach((mods) => {
+                     mods.instance().forEach((mod) => {
+                        !match && uuid === mod.getUniqueId() && (match = $(mod));
+                     });
+                  });
+                  if (!match) {
+                     match = $({
+                        format: 'modifier',
+                        uuid: uuid.toString(),
+                        amount: 0,
+                        operation: 'add_number',
+                        slot: null
+                     });
+                  }
+                  return match;
+               }
+            } else {
+               throw 'TypeError: You must supply a string value or a UUID!';
+            }
+         },
+         get modifiers () {
+            return _.define($('+').fronts('attribute'), (entry) => {
+               if (meta) {
+                  return {
+                     get: () => {
+                        const modifiers = meta.hasAttributeModifiers() && meta.getAttributeModifiers(entry.value);
+                        return $(_.array(modifiers || []));
+                     },
+                     set: (value) => {
+                        if (_.iterable(value)) {
+                           value = value.map((mod) => {
+                              typeof mod === 'number' && (mod = { amount: mod });
+                              if (typeof mod === 'object' && typeof mod.amount === 'number') {
+                                 mod.format = 'modifier';
+                                 mod.slot || (mod.slot = null);
+                                 mod.operation || (mod.operation = 'add_number');
+                                 mod.uuid || (mod.uuid = _.uuid().toString());
+                                 return mod;
+                              } else {
+                                 throw 'TypeError: That array contains an invalid modifier!';
+                              }
+                           });
+                           thing.meta = (meta) => {
+                              meta.removeAttributeModifier(entry.value);
+                              value.map((mod) => meta.addAttributeModifier(entry.value, $(mod).instance()));
+                           };
+                        } else if (value === null) {
+                           thing.meta = (meta) => {
+                              meta.removeAttributeModifier(entry.value);
+                           };
+                        } else {
+                           throw 'TypeError: You must supply a null value or an array of modifiers!';
+                        }
+                     }
+                  };
+               }
+            });
+         },
+         set modifiers (value) {
+            if (typeof value === 'object') {
+               value || (value = {});
+               try {
+                  _.keys($('+').fronts('attribute')).forEach((key) => (thing.modifiers[key] = value[key] || null));
+               } catch (error) {
+                  throw 'TypeError: That input contains invalid entries!';
+               }
+            } else {
+               throw 'TypeError: You must supply an object or a null value!';
+            }
+         },
+         get bars () {
+            if (player) return _.array(server.getBossBars());
+         },
+         set bars (value) {
+            if (_.iterable(value)) {
+               const input = value.map((key) => {
+                  try {
+                     return key instanceof NamespacedKey ? key : new NamespacedKey(...key.split(':'));
+                  } catch (error) {
+                     throw 'TypeError: That array contains invalid namespaced keys!';
+                  }
+               });
+               player && thing.bars.forEach((bar) => bar.removePlayer(instance));
+               player && input.forEach((key) => server.getBossBar(key).addPlayer(instance));
+            } else {
+               throw 'TypeError: You must supply an array of namespaced keys!';
             }
          },
          get name () {
             if (meta) return meta.getDisplayName();
          },
          set name (value) {
-            if (typeof value === 'string') thing.meta = (meta) => meta && meta.setDisplayName(value);
+            if (typeof value === 'string') thing.meta = (meta) => meta.setDisplayName(value);
             else throw 'TypeError: You must supply a string value!';
          },
          get nbt () {
@@ -337,12 +265,23 @@ export const wrapper = (_, $) => {
                throw 'SyntaxError: Cannot convert input to NBT!';
             }
          },
-         get place () {
-            return util.adventure(thing, 'place').get();
+         get placeable () {
+            return _.array(meta.getPlaceableKeys()).map((key) => key.getKey());
          },
-         set place (value) {
-            if (_.iterable(value)) meta && util.adventure(thing, 'place').set(value);
-            else throw 'TypeError: You must supply an array!';
+         set placeable (value) {
+            if (_.iterable(value)) {
+               value = value.map((entry) => {
+                  typeof entry === 'string' &&
+                     (entry = entry.includes(':')
+                        ? new NamespacedKey(...entry.split(':'))
+                        : ($('+').fronts('material')[entry] || { getKey: () => {} }).getKey());
+                  if (entry instanceof NamespacedKey) return entry;
+                  else throw 'TypeError: That array contains invalid placeable keys!';
+               });
+               thing.meta = (meta) => meta.setPlaceableKeys(_.collect(...value));
+            } else {
+               throw 'TypeError: You must supply an array of placeable keys!';
+            }
          },
          get title () {
             return instance.getI18NDisplayName();
@@ -351,8 +290,8 @@ export const wrapper = (_, $) => {
             if (meta) return meta.isUnbreakable();
          },
          set unbreakable (value) {
-            if (typeof value === 'boolean') thing.meta = (meta) => meta && meta.setUnbreakable(value);
-            else throw 'You must supply a boolean value!';
+            if (typeof value === 'boolean') thing.meta = (meta) => meta.setUnbreakable(value);
+            else throw 'TypeError: You must supply a boolean value!';
          }
       };
       return thing;
@@ -361,7 +300,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (input) => {
-      return $(`!${input.material}`).amount(input.amount).nbt(input.nbt).instance();
+      return $(`!${input.material}`).amount(input.amount).nbt(input.nbt);
    };
 };
 
@@ -370,19 +309,22 @@ export const chain = (_, $) => {
       amount: 'setter',
       damage: 'setter',
       data: 'appender',
-      destroy: 'setter',
+      destroyable: 'setter',
       drop: 'runnerLink',
-      enchantment: 'setterNest',
+      enchantments: 'setterNest',
       flags: 'setter',
       instance: 'getter',
       lore: 'setter',
       material: 'setter',
-      meta: 'setter',
-      modifier: 'setter',
-      modifiers: 'setterLink',
+      meta: (thing, value) => {
+         _.def(value) && (thing.meta = value);
+         return thing.meta;
+      },
+      modifier: 'runnerLink',
+      modifiers: 'setterLinkNest',
       name: 'setter',
       nbt: 'appender',
-      place: 'setter',
+      placeable: 'setter',
       serialize: (thing) => {
          if (_.def(thing)) {
             return {

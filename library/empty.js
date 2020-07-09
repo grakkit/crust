@@ -10,7 +10,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (thing) => {
-      return {};
+      return $({});
    };
 };
 

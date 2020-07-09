@@ -157,7 +157,12 @@ export const _ = {
       });
    },
    extend: (object, ...objects) => {
-      return Object.assign(object, ...objects);
+      return Object.assign(
+         object,
+         ...objects.map((object) => {
+            return _.object(Object.getOwnPropertyNames(object), (property) => ({ [property]: object[property] }));
+         })
+      );
    },
    flat: (array, consumer) => {
       consumer ||
@@ -222,7 +227,7 @@ export const _ = {
    },
    mirror: (options) => {
       options || (options = {});
-      const mirror = _.extend(options.array || [], {
+      const mirror = Object.assign(options.array || [], {
          add: (...args) => (options.add(...args), _.mirror(options).get()),
          remove: (...args) => (options.remove(...args), _.mirror(options).get()),
          clear: (...args) => (options.clear(...args), _.mirror(options).get()),
@@ -244,7 +249,7 @@ export const _ = {
          (consumer = (entry, index) => {
             return { [entry.key || index]: entry.value || entry };
          });
-      return _.extend({}, ..._.flat(array.map(consumer)));
+      return Object.assign({}, ..._.flat(array.map(consumer)));
    },
    parse: (data) => {
       try {
@@ -344,7 +349,7 @@ export const _ = {
       });
    },
    polyfill: () => {
-      _.extend(global, {
+      Object.assign(global, {
          atob: (string) => {
             return _.base.decode(string);
          },

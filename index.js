@@ -10,6 +10,7 @@ import * as entity from './library/entity.min.js';
 import * as item from './library/item.min.js';
 import * as location from './library/location.min.js';
 import * as vector from './library/vector.min.js';
+import * as modifier from './library/modifier.min.js';
 
 const Block = Java.type('org.bukkit.block.Block');
 const Entity = Java.type('org.bukkit.entity.Entity');
@@ -17,6 +18,7 @@ const Vector = Java.type('org.bukkit.util.Vector');
 const Location = Java.type('org.bukkit.Location');
 const ItemStack = Java.type('org.bukkit.inventory.ItemStack');
 const KeyedBossBar = Java.type('org.bukkit.boss.KeyedBossBar');
+const AttributeModifier = Java.type('org.bukkit.attribute.AttributeModifier');
 
 const $ = (object, ...args) => {
    if (_.def(object)) {
@@ -26,7 +28,7 @@ const $ = (object, ...args) => {
             const suffix = object.slice(1);
             switch (prefix) {
                case '~':
-                  return $[suffix] || _.extend($, bridge(suffix, ...args));
+                  return $[suffix] || Object.assign($, bridge(suffix, ...args));
                case '!':
                   return $(new ItemStack($('+').fronts('material')[suffix]).ensureServerConversions());
                case '@':
@@ -47,26 +49,27 @@ const $ = (object, ...args) => {
             }
          case 'object':
             if (object === null) return null;
-            const input = _.iterable(object) ? _.flat(object)[0] : object;
+            const input = _.iterable(object) ? _.flat([ ...object ])[0] : object;
             if (input === undefined) {
                return receiver('empty', object, jx);
             } else if (typeof input.instance === 'function') {
                return object;
             } else if (_.iterable(input)) {
-               return object.map((entry) => $(entry));
+               return [ ...object ].map((entry) => $(entry));
             } else if (_.def(input)) {
                if (typeof input.format === 'string') {
                   const library = jx[input.format];
                   if (library) {
-                     console.log('a');
                      return _.iterable(object)
-                        ? $(object.map((entry) => (_.def(entry) ? library.parser(entry) : entry)))
+                        ? $([ ...object ].map((entry) => (_.def(entry) ? library.parser(entry) : entry)))
                         : $(_.def(object) ? library.parser(object) : object);
                   } else {
                      return null;
                   }
                } else if (input instanceof KeyedBossBar) {
                   return receiver('bar', object, jx);
+               } else if (input instanceof AttributeModifier) {
+                  return receiver('modifier', object, jx);
                } else if (input instanceof Block) {
                   return receiver('block', object, jx);
                } else if (input instanceof Entity) {
@@ -102,7 +105,8 @@ const jx = {
    entity: builder(entity),
    item: builder(item),
    location: builder(location),
-   vector: builder(vector)
+   vector: builder(vector),
+   modifier: builder(modifier)
 };
 
 const utility = tools.utility(_, $, jx);

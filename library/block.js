@@ -1,3 +1,6 @@
+const Material = Java.type('org.bukkit.Material');
+const BlockFace = Java.type('org.bukkit.block.BlockFace');
+const ItemStack = Java.type('org.bukkit.inventory.ItemStack');
 const Directional = Java.type('org.bukkit.block.data.Directional');
 const PersistentDataHolder = Java.type('org.bukkit.persistence.PersistentDataHolder');
 
@@ -21,39 +24,48 @@ export const wrapper = (_, $) => {
          },
          distance: (target, option) => {
             try {
-               return $('+').distance(instance.location, target, option);
+               return $('+').distance(instance.getLocation(), target, option);
             } catch (error) {
                switch (error) {
                   case 'invalid-both':
                   case 'invalid-source':
                      throw 'ImpossibleError: How the fuck are you seeing this error!?';
                   case 'invalid-target':
-                     throw 'Argument 1 must be a location, vector, or have a location or vector attached!';
+                     throw 'TypeError: Argument 1 must be a location, vector, or have a location or vector attached!';
                }
             }
          },
          drops: (item) => {
-            const drops = instance.getDrops($(':standardize', item));
-            return drops.length === 0 ? null : drops;
+            if (_.def(item)) {
+               item instanceof ItemStack || (item = $('+').instance(item));
+               if (item instanceof ItemStack) {
+                  return $([ ...instance.getDrops(item) ]);
+               } else {
+                  throw 'TypeError: You must specify an item stack or nothing at all!';
+               }
+            } else {
+               return $([ ...instance.getDrops() ]);
+            }
          },
          get facing () {
             const data = instance.getBlockData();
-            if (data instanceof Directional) return $('+').fronts('blockFace')[data.getFacing()];
+            if (data instanceof Directional) return $('+').backs('blockFace')[data.getFacing()];
          },
          set facing (value) {
-            const data = instance.getBlockData();
-            if (data instanceof Directional) {
-               data.setFacing($.blockFace[value]);
-               instance.setBlockData(data);
+            typeof value === 'string' && (value = $('+').fronts('blockFace')[value]);
+            if (value instanceof BlockFace) {
+               const data = instance.getBlockData();
+               if (data instanceof Directional) {
+                  data.setFacing(value);
+                  instance.setBlockData(data);
+               }
+            } else {
+               throw 'TypeError: You must specify a block face!';
             }
          },
          get instance () {
             return instance;
          },
-         get inventory () {
-            const state = instance.getState();
-         },
-         set inventory (value) {},
          get location () {
             return instance.getLocation();
          },
@@ -61,7 +73,12 @@ export const wrapper = (_, $) => {
             return $('+').backs('material')[instance.getType()];
          },
          set material (value) {
-            instance.setType($('+').fronts('material')[value]);
+            typeof value === 'string' && (value = $('+').fronts('material')[value]);
+            if (value instanceof Material) {
+               instance.setType(value);
+            } else {
+               throw 'TypeError: You must specify a material!';
+            }
          },
          get vector () {
             return instance.getLocation().toVector();
@@ -85,10 +102,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (thing) => {
-      return {
-         data: server.createBlockData(thing.data),
-         state: $('!stone').nbt(thing.state).meta().getBlockState()
-      };
+      throw 'SyntaxError: Blocks cannot be parsed and serialized!';
    };
 };
 
@@ -96,24 +110,15 @@ export const chain = (_, $) => {
    return {
       data: 'appender',
       distance: 'runner',
-      drop: 'runnerLink',
       drops: 'runner',
-      glowing: 'setter',
+      // re-add in future commit, use silent, no AI, invisible magma cubes for clean outlines
+      // glowing: 'setter',
       instance: 'getter',
       location: 'getterLink',
       material: 'setter',
       serialize: (thing) => {
-         if (_.def(thing)) {
-            return {
-               format: 'block',
-               data: thing.instance.getBlockData().getAsString(),
-               state: $(`!${thing.material}`).meta((meta) => meta.setBlockState(thing.instance.getState())).nbt()
-            };
-         } else {
-            return null;
-         }
+         throw 'SyntaxError: Blocks cannot be parsed and serialized!';
       },
-      spawn: 'runnerLink',
       vector: 'getterLink',
       world: 'getter',
       x: 'getter',

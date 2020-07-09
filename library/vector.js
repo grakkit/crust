@@ -92,7 +92,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (thing) => {
-      return new Vector(thing.x, thing.y, thing.z);
+      return $(new Vector(thing.x, thing.y, thing.z));
    };
 };
 

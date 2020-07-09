@@ -130,13 +130,7 @@ export const builder = (_, $) => {
                },
                modifier: (consumer) => {
                   return (...args) => {
-                     const outputs = things.map(consumer);
-                     if (typeof args[0] === 'function') {
-                        outputs.map(args[0]);
-                        return that;
-                     } else {
-                        return outputs;
-                     }
+                     return things.map((thing) => consumer(thing, ...args));
                   };
                },
                runner: (property) => {
@@ -191,15 +185,20 @@ export const builder = (_, $) => {
                      if (args.length === 0) {
                         return things.map((thing) => (!_.def(thing) ? thing : thing[property] || {}));
                      } else if (args.length === 1) {
-                        const output = things.map((thing) => {
-                           if (typeof args[0] === 'function') {
-                              return args[0](!_.def(thing) ? thing : thing[property] || {});
-                           } else if (thing) {
-                              return (thing[property] || {})[args[0]];
-                           }
-                        });
-                        if (slayer) return [ $(output[0]) ];
-                        else return $(output);
+                        if (typeof args[0] === 'object') {
+                           things.map((thing) => _.def(thing) && (thing[property] = args[0]));
+                           return that;
+                        } else {
+                           const output = things.map((thing) => {
+                              if (typeof args[0] === 'function') {
+                                 return args[0](!_.def(thing) ? thing : thing[property] || {});
+                              } else if (thing) {
+                                 return (thing[property] || {})[args[0]];
+                              }
+                           });
+                           if (slayer) return [ $(output[0]) ];
+                           else return $(output);
+                        }
                      } else {
                         things.map((thing) => {
                            if (typeof args[1] === 'function') {
@@ -217,13 +216,18 @@ export const builder = (_, $) => {
                      if (args.length === 0) {
                         return things.map((thing) => (!_.def(thing) ? thing : thing[property] || {}));
                      } else if (args.length === 1) {
-                        return things.map((thing) => {
-                           if (typeof args[0] === 'function') {
-                              return args[0](!_.def(thing) ? thing : thing[property] || {});
-                           } else if (thing) {
-                              return (thing[property] || {})[args[0]];
-                           }
-                        });
+                        if (typeof args[0] === 'object') {
+                           things.map((thing) => _.def(thing) && (thing[property] = args[0]));
+                           return that;
+                        } else {
+                           return things.map((thing) => {
+                              if (typeof args[0] === 'function') {
+                                 return args[0](!_.def(thing) ? thing : thing[property] || {});
+                              } else if (thing) {
+                                 return (thing[property] || {})[args[0]];
+                              }
+                           });
+                        }
                      } else {
                         things.map((thing) => {
                            if (typeof args[1] === 'function') {
@@ -458,7 +462,7 @@ export const utility = (_, $, jx) => {
                   return output;
                }
             } else if (typeof thing.format === 'string') {
-               return jx[thing.format].parser(thing);
+               return jx[thing.format].parser(thing).instance();
             } else {
                return thing;
             }
@@ -500,14 +504,15 @@ export const receiver = (_, $) => {
    return (type, input, jx) => {
       if (_.iterable(input)) {
          const that = jx[type].chainer(
-            input.map((instance) => {
+            [ ...input ].map((instance) => {
                return _.def(instance) ? jx[type].wrapper(instance) : instance;
             })
          );
-         return _.extend(that, {
+         return Object.assign(that, {
             [Symbol.iterator]: (...args) => input.values(...args),
-            first: () => $(_.flat(input)[0]),
-            last: () => $(_.flat(input)[input.length - 1])
+            first: () => $(_.flat([ ...input ])[0]),
+            last: () => $(_.flat([ ...input ])[input.length - 1]),
+            entry: (index) => $([ ...input ].slice(index)[0])
          });
       } else {
          const that = jx[type].chainer([ _.def(input) ? jx[type].wrapper(input) : input ], 1);

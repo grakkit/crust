@@ -1,3 +1,5 @@
+const BarColor = Java.type('org.bukkit.boss.BarColor');
+const BarStyle = Java.type('org.bukkit.boss.BarStyle');
 const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
 
 export const wrapper = (_, $) => {
@@ -7,9 +9,9 @@ export const wrapper = (_, $) => {
             return $('+').backs('barColor')[instance.getColor()];
          },
          set color (value) {
-            const color = $('+').fronts('barColor')[value];
-            if (color) instance.setColor(color);
-            else throw 'That color is invalid!';
+            typeof value === 'string' && (value = $('+').fronts('barColor')[value]);
+            if (value instanceof BarColor) instance.setColor(value);
+            else throw 'TypeError: That color is invalid!';
          },
          get flags () {
             return _.define($('+').fronts('barFlag'), (entry) => {
@@ -22,7 +24,7 @@ export const wrapper = (_, $) => {
                         if (value) instance.addFlag(entry.value);
                         else instance.removeFlag(entry.value);
                      } else {
-                        throw 'You must supply a boolean value!';
+                        throw 'TypeError: You must supply a boolean value!';
                      }
                   }
                };
@@ -46,13 +48,13 @@ export const wrapper = (_, $) => {
                   try {
                      return _.player(player);
                   } catch (error) {
-                     throw 'That array contains invalid player entries!';
+                     throw 'TypeError: That array contains invalid player entries!';
                   }
                });
                thing.players.forEach((player) => instance.removePlayer(player));
                input.forEach((player) => instance.addPlayer(player.offline));
             } else {
-               throw 'You must supply an array of player identifiers!';
+               throw 'TypeError: You must supply an array of player identifiers!';
             }
          },
          get progress () {
@@ -60,20 +62,22 @@ export const wrapper = (_, $) => {
          },
          set progress (value) {
             if (typeof value === 'number') instance.setProgress(value);
-            else throw 'You must supply a numeric value!';
+            else throw 'TypeError: You must supply a numeric value!';
          },
          get style () {
             return $('+').backs('barStyle')[instance.getStyle()];
          },
          set style (value) {
-            instance.setStyle($('+').fronts('barStyle')[value]);
+            typeof value === 'string' && (value = $('+').fronts('barStyle')[value]);
+            if (value instanceof BarStyle) instance.setStyle(value);
+            else throw 'TypeError: That style is invalid!';
          },
          get title () {
             return instance.getTitle();
          },
          set title (value) {
             if (typeof value === 'string') instance.setTitle(value);
-            else throw 'You must supply a string value!';
+            else throw 'TypeError: You must supply a string value!';
          }
       };
       return thing;
@@ -116,7 +120,7 @@ export const chain = (_, $) => {
                progress: thing.progress,
                color: thing.color,
                style: thing.style,
-               flags: _.extend({}, thing.flags)
+               flags: Object.assign({}, thing.flags)
             };
          } else {
             return null;
