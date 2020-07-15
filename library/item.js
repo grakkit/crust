@@ -96,7 +96,7 @@ export const wrapper = (_, $) => {
             if (typeof value === 'object') {
                value || (value = {});
                try {
-                  _.keys($('+').fronts('enchantment')).forEach((key) => (thing.enchantment[key] = value[key] || null));
+                  _.keys($('+').fronts('enchantment')).forEach((key) => (thing.enchantments[key] = value[key] || 0));
                } catch (error) {
                   throw 'TypeError: That input contains invalid entries!';
                }
@@ -204,7 +204,7 @@ export const wrapper = (_, $) => {
                            });
                            thing.meta = (meta) => {
                               meta.removeAttributeModifier(entry.value);
-                              value.map((mod) => meta.addAttributeModifier(entry.value, $(mod).instance()));
+                              value.map((mod) => meta.addAttributeModifier(entry.value, $('+').instance(mod)));
                            };
                         } else if (value === null) {
                            thing.meta = (meta) => {
@@ -300,7 +300,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (input) => {
-      return $(`!${input.material}`).amount(input.amount).nbt(input.nbt);
+      return $(`!${input.material}`).amount(input.amount).nbt(input.nbt).instance();
    };
 };
 

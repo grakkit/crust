@@ -1,5 +1,6 @@
 const UUID = Java.type('java.util.UUID');
 const Sound = Java.type('org.bukkit.Sound');
+const World = Java.type('org.bukkit.World');
 const Entity = Java.type('org.bukkit.entity.Entity');
 const Player = Java.type('org.bukkit.entity.Player');
 const Vector = Java.type('org.bukkit.util.Vector');
@@ -81,7 +82,7 @@ export const wrapper = (_, $) => {
          set ai (value) {
             alive && instance.setAI(value);
          },
-         get attribute () {
+         get attributes () {
             return _.define($('+').fronts('attribute'), (entry) => {
                if (attributable) {
                   const attribute = instance.getAttribute(entry.value);
@@ -103,7 +104,7 @@ export const wrapper = (_, $) => {
                }
             });
          },
-         set attribute (value) {
+         set attributes (value) {
             if (typeof value === 'object') {
                value || (value = {});
                try {
@@ -260,6 +261,26 @@ export const wrapper = (_, $) => {
                throw 'TypeError: You must supply an object or a null value!';
             }
          },
+         get experience () {
+            if (player) return instance.getExp();
+         },
+         set experience (value) {
+            if (typeof value === 'number') {
+               if (player) instance.setExp(value);
+            } else {
+               throw 'TypeError: You must supply a numeric value!';
+            }
+         },
+         get food () {
+            if (player) return instance.getFoodLevel();
+         },
+         set food (value) {
+            if (typeof value === 'number') {
+               if (player) instance.setFoodLevel(value);
+            } else {
+               throw 'TypeError: You must supply a numeric value!';
+            }
+         },
          get glowing () {
             return instance.isGlowing();
          },
@@ -287,15 +308,20 @@ export const wrapper = (_, $) => {
             if (inventory) return [ ...instance.getInventory() ];
          },
          set inventory (value) {
+            value === null && (value = []);
             if (_.iterable(value)) {
                value = value.map((item) => {
-                  item = $('+').instance(item);
-                  if (item instanceof ItemStack) return item;
-                  else throw 'TypeError: That array contains non-items!';
+                  if (item === null) {
+                     return item;
+                  } else {
+                     item = $('+').instance(item);
+                     if (item instanceof ItemStack) return item;
+                     else throw 'TypeError: That array contains invalid items!';
+                  }
                });
-               if (inventory) instance.getInventory().setContents($('+').instance(value));
+               if (inventory) instance.getInventory().setContents(value);
             } else {
-               throw 'TypeError: You must supply an array of items!';
+               throw 'TypeError: You must supply an array or a null value!';
             }
          },
          get invulnerable () {
@@ -317,6 +343,16 @@ export const wrapper = (_, $) => {
                instance.setItemInHand(value);
             } else {
                throw 'TypeError: You must supply an item stack or a null value!';
+            }
+         },
+         get level () {
+            if (player) return instance.getLevel();
+         },
+         set level (value) {
+            if (typeof value === 'number') {
+               if (player) instance.setLevel(value);
+            } else {
+               throw 'TypeError: You must supply a numeric value!';
             }
          },
          get lifeform () {
@@ -371,6 +407,16 @@ export const wrapper = (_, $) => {
          note: (sound, pitch, options) => {
             thing.sound(sound, Object.assign(options || {}, { pitch: util.notes[pitch || 0] }));
          },
+         get op () {
+            if (player) return instance.isOp();
+         },
+         set op (value) {
+            if (typeof value === 'boolean') {
+               if (player) instance.setOp(value);
+            } else {
+               throw 'TypeError: You must supply a boolean value!';
+            }
+         },
          get passengers () {
             return $(_.array(instance.getPassengers()));
          },
@@ -393,6 +439,16 @@ export const wrapper = (_, $) => {
          remove: () => {
             if (player) instance.kickPlayer('');
             else instance.remove();
+         },
+         get saturation () {
+            if (player) return instance.getSaturation();
+         },
+         set saturation (value) {
+            if (typeof value === 'number') {
+               if (player) instance.setSaturation(value);
+            } else {
+               throw 'TypeError: You must supply a numeric value!';
+            }
          },
          get silent () {
             return instance.isSilent();
@@ -551,14 +607,14 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (input) => {
-      return $(`?${input.lifeform}`, $(input.location)).nbt(input.nbt);
+      return $(`?${input.lifeform}`, $(input.location)).nbt(input.nbt).instance();
    };
 };
 
 export const chain = (_, $) => {
    return {
       ai: 'setter',
-      attribute: 'setterNest',
+      attributes: 'setterNest',
       bar: 'runnerLink',
       bars: 'setterLink',
       block: 'getterLink',
@@ -567,6 +623,7 @@ export const chain = (_, $) => {
       distance: 'runner',
       effect: 'setterNest',
       equipment: 'setterLinkNest',
+      experience: 'setter',
       glowing: 'setter',
       health: 'setter',
       instance: 'getter',
@@ -574,12 +631,14 @@ export const chain = (_, $) => {
       invulnerable: 'setter',
       item: 'setterLink',
       jumping: 'getter',
+      level: 'setter',
       lifeform: 'getter',
       location: 'setterLink',
       mode: 'setter',
       name: 'setter',
       nbt: 'appender',
       note: 'runner',
+      op: 'setter',
       passengers: 'setter',
       player: 'getter',
       remove: 'voider',

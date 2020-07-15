@@ -9,7 +9,7 @@ export const wrapper = (_, $) => {
          },
          set amount (value) {
             if (typeof value === 'number') {
-               instance = $(Object.assign($(instance).serialize(), { amount: value })).instance();
+               instance = $('+').instance(Object.assign($(instance).serialize(), { amount: value }));
             } else {
                throw 'TypeError: You must supply a numeric value!';
             }
@@ -23,7 +23,7 @@ export const wrapper = (_, $) => {
          set operation (value) {
             typeof value === 'string' && (value = $('+').fronts('amOperation')[value]);
             if (value instanceof AttributeModifier.Operation) {
-               instance = $(Object.assign($(instance).serialize(), { operation: value })).instance();
+               instance = $('+').instance(Object.assign($(instance).serialize(), { operation: value }));
             } else {
                throw 'TypeError: That equipment slot is invalid!';
             }
@@ -35,7 +35,7 @@ export const wrapper = (_, $) => {
          set slot (value) {
             typeof value === 'string' && (value = $('+').fronts('equipmentSlot')[value]);
             if (value instanceof EquipmentSlot || value === null) {
-               instance = $(Object.assign($(instance).serialize(), { slot: value })).instance();
+               instance = $('+').instance(Object.assign($(instance).serialize(), { slot: value }));
             } else {
                throw 'TypeError: That equipment slot is invalid!';
             }
@@ -50,14 +50,12 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (thing) => {
-      return $(
-         new AttributeModifier(
-            _.uuid(thing.uuid),
-            '',
-            thing.amount,
-            $('+').fronts('amOperation')[thing.operation],
-            _.def(thing.slot) ? $('+').fronts('equipmentSlot')[thing.slot] : null
-         )
+      return new AttributeModifier(
+         _.uuid(thing.uuid),
+         '',
+         thing.amount,
+         $('+').fronts('amOperation')[thing.operation],
+         _.def(thing.slot) ? $('+').fronts('equipmentSlot')[thing.slot] : null
       );
    };
 };

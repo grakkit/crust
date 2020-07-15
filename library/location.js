@@ -114,7 +114,7 @@ export const wrapper = (_, $) => {
 
 export const parser = (_, $) => {
    return (thing) => {
-      return $(new Location(server.getWorld(thing.world), thing.x, thing.y, thing.z, thing.pitch, thing.yaw));
+      return new Location(server.getWorld(_.uuid(thing.world)), thing.x, thing.y, thing.z, thing.yaw, thing.pitch);
    };
 };
 

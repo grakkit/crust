@@ -1,7 +1,9 @@
 const Material = Java.type('org.bukkit.Material');
 const BlockFace = Java.type('org.bukkit.block.BlockFace');
 const ItemStack = Java.type('org.bukkit.inventory.ItemStack');
+const Rotatable = Java.type('org.bukkit.block.data.Rotatable');
 const Directional = Java.type('org.bukkit.block.data.Directional');
+const LazyMetadataValue = Java.type('org.bukkit.metadata.LazyMetadataValue');
 const PersistentDataHolder = Java.type('org.bukkit.persistence.PersistentDataHolder');
 
 export const wrapper = (_, $) => {
@@ -9,13 +11,26 @@ export const wrapper = (_, $) => {
       const block = {
          get data () {
             const state = instance.getState();
-            return state instanceof PersistentDataHolder ? $('+').data(state.getPersistentDataContainer()) : {};
+            if (state instanceof PersistentDataHolder) {
+               return $('+').data(state.getPersistentDataContainer()) || {};
+            } else {
+               const entry = state.getMetadata('grakkit:jx')[0] || { value: () => '{}' };
+               try {
+                  return JSON.parse(entry.value()) || {};
+               } catch (error) {
+                  return entry.value();
+               }
+            }
          },
          set data (value) {
             if (typeof value === 'object') {
                const state = instance.getState();
                if (state instanceof PersistentDataHolder) {
                   $('+').data(state.getPersistentDataContainer(), value);
+                  state.update(true);
+               } else {
+                  value = JSON.stringify(core.serialize(value));
+                  state.setMetadata('grakkit:jx', eval(`new LazyMetadataValue(core.plugin, ()=>'${value}')`));
                   state.update(true);
                }
             } else {
@@ -50,6 +65,7 @@ export const wrapper = (_, $) => {
          get facing () {
             const data = instance.getBlockData();
             if (data instanceof Directional) return $('+').backs('blockFace')[data.getFacing()];
+            else if (data instanceof Rotatable) return $('+').backs('blockFace')[data.getRotation()];
          },
          set facing (value) {
             typeof value === 'string' && (value = $('+').fronts('blockFace')[value]);
@@ -57,6 +73,9 @@ export const wrapper = (_, $) => {
                const data = instance.getBlockData();
                if (data instanceof Directional) {
                   data.setFacing(value);
+                  instance.setBlockData(data);
+               } else if (data instanceof Rotatable) {
+                  data.setRotation(value);
                   instance.setBlockData(data);
                }
             } else {
@@ -113,6 +132,7 @@ export const chain = (_, $) => {
       drops: 'runner',
       // re-add in future commit, use silent, no AI, invisible magma cubes for clean outlines
       // glowing: 'setter',
+      facing: 'setter',
       instance: 'getter',
       location: 'getterLink',
       material: 'setter',

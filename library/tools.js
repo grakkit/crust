@@ -387,7 +387,7 @@ export const utility = (_, $, jx) => {
          const type = PersistentDataType.STRING;
          if (_.def(value)) container.set(key, type, JSON.stringify(value, true));
          else if (value === null) container.remove(key);
-         else return JSON.parse(container.get(key, type));
+         else return JSON.parse(container.get(key, type)) || {};
       },
       distance: (source, target, option) => {
          _.def(source) && typeof source.location === 'function' && (source = source.location());
@@ -462,7 +462,7 @@ export const utility = (_, $, jx) => {
                   return output;
                }
             } else if (typeof thing.format === 'string') {
-               return jx[thing.format].parser(thing).instance();
+               return jx[thing.format].parser(thing);
             } else {
                return thing;
             }
@@ -512,7 +512,8 @@ export const receiver = (_, $) => {
             [Symbol.iterator]: (...args) => input.values(...args),
             first: () => $(_.flat([ ...input ])[0]),
             last: () => $(_.flat([ ...input ])[input.length - 1]),
-            entry: (index) => $([ ...input ].slice(index)[0])
+            entry: (index) => $([ ...input ].slice(index)[0]),
+            each: (consumer) => [ ...input ].map($).map(consumer)
          });
       } else {
          const that = jx[type].chainer([ _.def(input) ? jx[type].wrapper(input) : input ], 1);

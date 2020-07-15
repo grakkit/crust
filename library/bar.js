@@ -99,7 +99,7 @@ export const parser = (_, $) => {
          flags.map((flag) => bar.addFlag(flag));
       }
       bar.setProgress(thing.progress);
-      return $(bar);
+      return bar;
    };
 };
 

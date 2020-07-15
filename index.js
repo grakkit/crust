@@ -45,7 +45,7 @@ const $ = (object, ...args) => {
                case '+':
                   return utility;
                default:
-                  return null;
+                  return $(_.player(object).online);
             }
          case 'object':
             if (object === null) return null;
@@ -119,13 +119,14 @@ $('~org.bukkit.boss.BarColor');
 $('~org.bukkit.boss.BarStyle');
 $('~org.bukkit.SoundCategory');
 $('~org.bukkit.block.BlockFace');
-$('~org.bukkit.inventory.ItemFlag');
 $('~org.bukkit.inventory.EquipmentSlot');
 $('~org.bukkit.enchantments.Enchantment');
 $('~org.bukkit.attribute.AttributeModifier.Operation');
 
 $('~org.bukkit.Material', (value) => value.isLegacy());
 $('~org.bukkit.entity.EntityType', (value) => value.name() === 'UNKNOWN');
+
+$('~org.bukkit.inventory.ItemFlag', null, (value) => _.splice(_.lower(value.name()), '_', 1));
 $('~org.bukkit.attribute.Attribute', null, (value) => value.getKey().getKey().split('.')[1]);
 $('~org.bukkit.potion.PotionEffectType', null, (value) => value.getHandle().c().split('.')[2]);
 
