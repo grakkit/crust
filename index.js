@@ -1,4 +1,4 @@
-if (core.support.legacy) throw 'You must be running on spigot or paper to use JX!';
+if (core.version !== 'modern') throw 'You must be running on spigot or paper to use JX!';
 
 import { _ } from './library/framework.min.js';
 import * as tools from './library/tools.min.js';
