@@ -327,12 +327,14 @@ export const _ = {
             if (uuid === undefined) {
                if (target.includes('.')) {
                   return {};
-               } else {
+               } else if (target.includes('-')) {
                   try {
                      uuid = _.uuid(target);
                   } catch (error) {
                      uuid = server.getOfflinePlayer(target).getUniqueId();
                   }
+               } else {
+                  return {};
                }
             }
          }
