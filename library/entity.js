@@ -366,7 +366,7 @@ export const wrapper = (_, $) => {
             typeof value.getLocation === 'function' && (value = value.getLocation());
             value instanceof Vector && (value = value.toLocation(thing.world));
             if (value instanceof Location) {
-               instance.teleport(value);
+               instance.teleport(value, $.pteTeleportCause.plugin);
             } else {
                throw 'TypeError: You must specify a location, vector, or object with a location or vector attached!';
             }
@@ -594,7 +594,7 @@ export const wrapper = (_, $) => {
          set world (world) {
             if (_.def(world)) {
                world instanceof World || (world = server.getWorld(world));
-               if (_.def(world)) return instance.teleport(world.getSpawnLocation());
+               if (_.def(world)) return instance.teleport(world.getSpawnLocation(), $.pteTeleportCause.plugin);
                else throw 'ReferenceError: That world does not exist!';
             } else {
                throw 'TypeError: You must specify a world, world name or UUID!';

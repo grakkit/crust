@@ -11,7 +11,7 @@ Use `/module add grakkit/jx` to install the module, and `/module update grakkit/
 #### Usage
 Once installed, this code will import JX to the `$` variable. You can however use any variable name, as this wasn't coded by an idiot.
 ```javascript
-const $ = core.import('grakkit/jx');
+const $ = core.import('@grakkit/jx');
 ```
 
 #### Where's The Documentation?

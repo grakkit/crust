@@ -19,6 +19,8 @@ const NBTTagIntArray = nms.NBTTagIntArray;
 const NBTTagByteArray = nms.NBTTagByteArray;
 
 const tasks = [];
+const prompts = {};
+const interfaces = {};
 const crypto = new SecureRandom();
 
 export const _ = {
@@ -80,6 +82,32 @@ export const _ = {
          }
          return result;
       }
+   },
+   break: (string, limit, color) => {
+      const output = [ '' ];
+      let index = 0;
+      let current = 0;
+      color && (string = _.color(string));
+      string.split('\n').forEach((line) => {
+         line.split(' ').forEach((word) => {
+            const size = (color ? word.replace(/(§.)/g, '') : word).length;
+            if (size > limit) {
+               current > 0 && ++index;
+               output[index] = word;
+               current = 0;
+               ++index;
+               output[index] = '';
+            } else {
+               current += size;
+               if (current > limit) {
+                  current = 0;
+                  output[++index] = '';
+               }
+               output[index] += `${output[index] === '' ? '' : ' '}${word}`;
+            }
+         });
+      });
+      return output;
    },
    camel: (string, separator) => {
       const pascal = _.pascal(string, separator);
@@ -385,6 +413,9 @@ export const _ = {
          }
       });
    },
+   prompt: (player, callback) => {
+      prompts[player.getUniqueId().toString()] = callback;
+   },
    rand: {
       base: () => {
          return (crypto.nextInt() + 2147483648) / 4294967296;
@@ -502,6 +533,21 @@ export const _ = {
       const type = toString.apply(object).split(' ')[1].slice(0, -1);
       return type === 'Object' ? object.constructor.name : type;
    },
+   ui: (player, rows, title, slots, parent) => {
+      rows = rows * 9;
+      const inventory = server.createInventory(player, rows, title);
+      typeof slots.length === 'number' && (slots = _.object(slots));
+      _.entries(slots).forEach((entry) => {
+         if (_.def(entry.value)) {
+            const item = entry.value.item;
+            item && inventory.setItem(Number(entry.key), typeof item === 'function' ? item() : item);
+         }
+      });
+      const key = inventory.hashCode();
+      interfaces[key] = { key: key, slots: slots, parent: parent || null };
+      player.openInventory(inventory);
+      return inventory;
+   },
    upper: (string) => {
       return string.toUpperCase();
    },
@@ -512,6 +558,73 @@ export const _ = {
       return Object.values(object);
    }
 };
+
+core.event('org.bukkit.event.inventory.InventoryClickEvent', (event) => {
+   const inventory = event.getClickedInventory() || event.getInventory();
+   if (!inventory) return;
+   const key = inventory.hashCode();
+   const data = interfaces[key];
+   if (!data) return;
+   event.setCancelled(true);
+   const index = event.getSlot();
+   const slot = data.slots[index];
+   if (!slot || slot.action === null) return;
+   const player = event.getWhoClicked();
+   try {
+      switch (typeof slot.action) {
+         case 'object':
+            _.ui(player, slot.action.rows, slot.action.title, slot.action.slots, inventory);
+            break;
+         case 'function':
+            slot.action(slot.item, index, data);
+            break;
+         case 'string':
+            switch (slot.action) {
+               case 'exit':
+                  player.closeInventory();
+                  break;
+               case 'return':
+                  data.parent ? player.openInventory(data.parent) : player.closeInventory();
+                  break;
+            }
+            break;
+      }
+      typeof slot.item === 'function' && inventory.setItem(index, slot.item());
+   } catch (error) {
+      console.error('FrameworkError: An interface element action threw an error while attempting to parse it!');
+      console.error(error);
+   }
+});
+
+core.event('org.bukkit.event.player.PlayerChatEvent', (event) => {
+   const uuid = event.getPlayer().getUniqueId().toString();
+   const callback = prompts[uuid];
+   if (callback) {
+      event.setCancelled(true);
+      try {
+         callback(event.getMessage());
+      } catch (error) {
+         console.error('FrameworkError: A player chat prompt callback threw an error during execution!');
+         console.error(error);
+      }
+      delete prompts[uuid];
+   }
+});
+
+core.event('org.bukkit.event.player.PlayerToggleSneakEvent', (event) => {
+   if (event.isSneaking()) return;
+   const uuid = event.getPlayer().getUniqueId().toString();
+   const callback = prompts[uuid];
+   if (callback) {
+      try {
+         callback(null);
+      } catch (error) {
+         console.error('FrameworkError: A player chat prompt callback threw an error during execution!');
+         console.error(error);
+      }
+      delete prompts[uuid];
+   }
+});
 
 core.event('org.bukkit.event.player.PlayerJoinEvent', (event) => {
    const player = event.getPlayer();

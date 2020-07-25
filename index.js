@@ -122,6 +122,7 @@ $('~org.bukkit.block.BlockFace');
 $('~org.bukkit.inventory.EquipmentSlot');
 $('~org.bukkit.enchantments.Enchantment');
 $('~org.bukkit.attribute.AttributeModifier.Operation');
+$('~org.bukkit.event.player.PlayerTeleportEvent.TeleportCause');
 
 $('~org.bukkit.Material', (value) => value.isLegacy());
 $('~org.bukkit.entity.EntityType', (value) => value.name() === 'UNKNOWN');
