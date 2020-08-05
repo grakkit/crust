@@ -1,4 +1,5 @@
-// you were meant to defeat the sith, not join them!
+// server professionals: nooo! you cant just use NMS to parse and serialize data with notch's superior nbt system!!!!!!
+// harrix432: haha eval server class name into packages go brrrr
 const nms = eval(`Packages.net.minecraft.server.${server.getClass().getCanonicalName().split('.')[3]}`);
 
 const UUID = Java.type('java.util.UUID');
@@ -125,6 +126,9 @@ export const _ = {
    },
    color: (string) => {
       return string.replace(/(&)/g, '§').replace(/(§§)/g, '&');
+   },
+   count: (array) => {
+      return Object.fromEntries([ ...array.reduce((map, key) => map.set(key, (map.get(key) || 0) + 1), new Map()) ]);
    },
    def: (object) => {
       if ([ undefined, null ].includes(object)) return false;
@@ -338,7 +342,7 @@ export const _ = {
    },
    player: (target) => {
       let uuid = undefined;
-      const players = Object.assign({}, core.data('grakkit/players'));
+      const players = Object.assign({}, core.data('framework/players'));
       if (target instanceof UUID) {
          uuid = target;
       } else if (typeof target === 'string') {
@@ -632,7 +636,7 @@ core.event('org.bukkit.event.player.PlayerJoinEvent', (event) => {
    const name = player.getName();
    const uuid = player.getUniqueId().toString();
    const info = { address: address, name: name, uuid: uuid };
-   Object.assign(core.data('grakkit/players'), {
+   Object.assign(core.data('framework/players'), {
       [address]: info,
       [name]: info,
       [uuid]: info

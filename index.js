@@ -1,16 +1,16 @@
 if (core.version !== 'modern') throw 'You must be running on spigot or paper to use JX!';
 
-import { _ } from './library/framework.min.js';
-import * as tools from './library/tools.min.js';
+const _ = core.import('library/framework.min.js')._;
+const tools = core.import('library/tools.min.js');
 
-import * as bar from './library/bar.min.js';
-import * as block from './library/block.min.js';
-import * as empty from './library/empty.min.js';
-import * as entity from './library/entity.min.js';
-import * as item from './library/item.min.js';
-import * as location from './library/location.min.js';
-import * as vector from './library/vector.min.js';
-import * as modifier from './library/modifier.min.js';
+const bar = core.import('library/bar.min.js');
+const block = core.import('library/block.min.js');
+const empty = core.import('library/empty.min.js');
+const entity = core.import('library/entity.min.js');
+const item = core.import('library/item.min.js');
+const location = core.import('library/location.min.js');
+const vector = core.import('library/vector.min.js');
+const modifier = core.import('library/modifier.min.js');
 
 const Block = Java.type('org.bukkit.block.Block');
 const Entity = Java.type('org.bukkit.entity.Entity');
