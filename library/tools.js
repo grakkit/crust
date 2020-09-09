@@ -1,529 +1,233 @@
-const Vector = Java.type('org.bukkit.util.Vector');
-const Location = Java.type('org.bukkit.Location');
-const ItemStack = Java.type('org.bukkit.inventory.ItemStack');
-const Cancellable = Java.type('org.bukkit.event.Cancellable');
-const NamespacedKey = Java.type('org.bukkit.NamespacedKey');
-const PersistentDataType = Java.type('org.bukkit.persistence.PersistentDataType');
+/** @type {import('./types')} */
+const {
+   // helper
+   PersistentDataType,
 
-export const bridge = (_, $) => {
-   return (input, ...args) => {
-      let index = -1;
-      const words = [];
-      input.split('.').forEach((node) => {
-         node.split('').map((char) => {
-            if (char === _.upper(char)) words[++index] = char;
-            else if (words[index]) words[index] += char;
-         });
-         ++index;
-      });
-      let key = '';
-      const terms = _.flat(words);
-      if (terms.length < 3) key = _.camel(terms.join(' '), ' ');
-      else if (terms.length === 3) key = _.lower(terms[0][0] + terms[1][0]) + terms[2];
-      else key = _.lower(terms.slice(0, -2).map((term) => term[0]).join('')) + terms.slice(-2).join('');
-      return {
-         [key]: _.object(_.array(Java.type(input).values()), (value) => {
-            if (!args[0] || !args[0](value)) {
-               let name = '';
-               if (args[1]) name = args[1](value);
-               else if (typeof value.getKey === 'function') name = value.getKey().getKey();
-               else name = _.lower(value.name());
-               return { [name]: value, [value]: name };
-            }
-         })
-      };
-   };
+   // def
+   Attribute,
+   Enchantment,
+   EntityType,
+   ItemFlag,
+   Material,
+
+   // nbt
+   NBTTagByte,
+   NBTTagByteArray,
+   NBTTagCompound,
+   NBTTagDouble,
+   NBTTagFloat,
+   NBTTagInt,
+   NBTTagIntArray,
+   NBTTagList,
+   NBTTagLong,
+   NBTTagShort,
+   NBTTagString,
+   NamespacedKey
+} = core.import('./types.js');
+
+/** @type {import('./tools-spec').num} */
+export const num = {
+   clamp: (number, min, max) => {
+      max || ((max = min), (min = 0));
+      return number < min ? min : number > max ? max : number;
+   }
 };
 
-export const builder = (_, $) => {
-   return (library) => {
-      const chain = library.chain(_, $);
-      return {
-         wrapper: library.wrapper(_, $),
-         parser: library.parser(_, $),
-         chainer: (things, slayer) => {
-            const that = {};
-            const properties = {
-               appender: (property) => {
-                  return (...args) => {
-                     if (args.length === 0) {
-                        return things.map((thing) => (!_.def(thing) ? thing : thing[property]));
-                     } else {
-                        things.map((thing) => {
-                           if (typeof args[0] === 'function') {
-                              const value = !_.def(thing) ? thing : thing[property] || {};
-                              args[0](value);
-                              !_.def(thing) ? thing : (thing[property] = value);
-                           } else if (thing) {
-                              thing[property] = args[0];
-                           }
-                        });
-                        return that;
-                     }
-                  };
-               },
-               appenderLink: (property) => {
-                  return (...args) => {
-                     if (args.length === 0) {
-                        if (slayer) return [ $(things.map((thing) => (!_.def(thing) ? thing : thing[property]))[0]) ];
-                        else return $(things.map((thing) => (!_.def(thing) ? thing : thing[property])));
-                     } else {
-                        if (typeof args[0] === 'function') {
-                           things.map((thing) => {
-                              const value = $(!_.def(thing) ? thing : thing[property] || {});
-                              args[0](value);
-                              !_.def(thing) ? thing : (thing[property] = value.instance());
-                           });
-                        } else {
-                           things.map((thing) => {
-                              return !_.def(thing) ? thing : (thing[property] = $('+').instance(args[0]));
-                           });
-                        }
-                        return that;
-                     }
-                  };
-               },
-               getter: (property) => {
-                  return (...args) => {
-                     if (typeof args[0] === 'function') {
-                        things.map((thing) => args[0](!_.def(thing) ? thing : thing[property]));
-                        return that;
-                     } else {
-                        return things.map((thing) => (!_.def(thing) ? thing : thing[property]));
-                     }
-                  };
-               },
-               getterLink: (property) => {
-                  return (...args) => {
-                     if (typeof args[0] === 'function') {
-                        args[0]($(things.map((thing) => (!_.def(thing) ? thing : thing[property]))));
-                        return that;
-                     } else {
-                        if (slayer) return [ $(things.map((thing) => (!_.def(thing) ? thing : thing[property]))[0]) ];
-                        else return $(things.map((thing) => (!_.def(thing) ? thing : thing[property])));
-                     }
-                  };
-               },
-               getterNest: (property) => {
-                  return (...args) => {
-                     if (args.length === 0) {
-                        return things.map((thing) => (!_.def(thing) ? thing : thing[property] || {}));
-                     } else if (args.length === 1) {
-                        return things.map((thing) => {
-                           if (typeof args[0] === 'function') {
-                              return args[0](!_.def(thing) ? thing : thing[property] || {});
-                           } else if (thing) {
-                              return (thing[property] || {})[args[0]];
-                           }
-                        });
-                     } else {
-                        things.map((thing) => {
-                           if (typeof args[1] === 'function') {
-                              args[1](!_.def(thing) ? thing : (thing[property] || {})[args[0]]);
-                           } else if (thing) {
-                              (thing[property] || {})[args[0]] = args[1];
-                           }
-                        });
-                        return that;
-                     }
-                  };
-               },
-               modifier: (consumer) => {
-                  return (...args) => {
-                     return things.map((thing) => consumer(thing, ...args));
-                  };
-               },
-               runner: (property) => {
-                  return (...args) => {
-                     return things.map((thing) => (!_.def(thing) ? thing : thing[property](...args)));
-                  };
-               },
-               runnerLink: (property) => {
-                  return (...args) => {
-                     if (slayer) {
-                        return [ $(things.map((thing) => (!_.def(thing) ? thing : thing[property](...args)))[0]) ];
-                     } else {
-                        return $(things.map((thing) => (!_.def(thing) ? thing : thing[property](...args))));
-                     }
-                  };
-               },
-               setter: (property) => {
-                  return (...args) => {
-                     if (args.length === 0) {
-                        return things.map((thing) => (!_.def(thing) ? thing : thing[property]));
-                     } else {
-                        things.map((thing) => {
-                           if (typeof args[0] === 'function') {
-                              args[0](!_.def(thing) ? thing : thing[property]);
-                           } else if (thing) {
-                              thing[property] = args[0];
-                           }
-                        });
-                        return that;
-                     }
-                  };
-               },
-               setterLink: (property) => {
-                  return (...args) => {
-                     if (args.length === 0) {
-                        if (slayer) return [ $(things.map((thing) => (!_.def(thing) ? thing : thing[property]))[0]) ];
-                        else return $(things.map((thing) => (!_.def(thing) ? thing : thing[property])));
-                     } else {
-                        if (typeof args[0] === 'function') {
-                           args[0]($(things.map((thing) => (!_.def(thing) ? thing : thing[property]))));
-                        } else {
-                           things.map((thing) => {
-                              return !_.def(thing) ? thing : (thing[property] = $('+').instance(args[0]));
-                           });
-                        }
-                        return that;
-                     }
-                  };
-               },
-               setterLinkNest: (property) => {
-                  return (...args) => {
-                     if (args.length === 0) {
-                        return things.map((thing) => (!_.def(thing) ? thing : thing[property] || {}));
-                     } else if (args.length === 1) {
-                        if (typeof args[0] === 'object') {
-                           things.map((thing) => _.def(thing) && (thing[property] = args[0]));
-                           return that;
-                        } else {
-                           const output = things.map((thing) => {
-                              if (typeof args[0] === 'function') {
-                                 return args[0](!_.def(thing) ? thing : thing[property] || {});
-                              } else if (thing) {
-                                 return (thing[property] || {})[args[0]];
-                              }
-                           });
-                           if (slayer) return [ $(output[0]) ];
-                           else return $(output);
-                        }
-                     } else {
-                        things.map((thing) => {
-                           if (typeof args[1] === 'function') {
-                              args[1](!_.def(thing) ? thing : (thing[property] || {})[args[0]]);
-                           } else if (thing) {
-                              (thing[property] || {})[args[0]] = args[1];
-                           }
-                        });
-                        return that;
-                     }
-                  };
-               },
-               setterNest: (property) => {
-                  return (...args) => {
-                     if (args.length === 0) {
-                        return things.map((thing) => (!_.def(thing) ? thing : thing[property] || {}));
-                     } else if (args.length === 1) {
-                        if (typeof args[0] === 'object') {
-                           things.map((thing) => _.def(thing) && (thing[property] = args[0]));
-                           return that;
-                        } else {
-                           return things.map((thing) => {
-                              if (typeof args[0] === 'function') {
-                                 return args[0](!_.def(thing) ? thing : thing[property] || {});
-                              } else if (thing) {
-                                 return (thing[property] || {})[args[0]];
-                              }
-                           });
-                        }
-                     } else {
-                        things.map((thing) => {
-                           if (typeof args[1] === 'function') {
-                              args[1](!_.def(thing) ? thing : (thing[property] || {})[args[0]]);
-                           } else if (thing) {
-                              (thing[property] || {})[args[0]] = args[1];
-                           }
-                        });
-                        return that;
-                     }
-                  };
-               },
-               voider: (property) => {
-                  return (...args) => {
-                     things.map((thing) => (!_.def(thing) ? thing : thing[property](...args)));
-                     return that;
-                  };
-               }
-            };
-            const scripts = _.object(_.entries(chain), (entry) => {
-               if (typeof entry.value === 'function') {
-                  return { [entry.key]: properties.modifier(entry.value) };
-               } else {
-                  return { [entry.key]: properties[entry.value](entry.key) };
-               }
-            });
-            return Object.assign(that, scripts);
-         },
-         links: _.keys(chain)
-      };
-   };
-};
-
-export const command = (_, $) => {
-   return {
-      on: (name) => {
-         let tab = () => [];
-         let run = () => {};
-         const that = {
-            tab: (handler) => {
-               tab = handler;
-               return that;
-            },
-            run: (handler) => {
-               run = handler;
-               return that;
-            }
-         };
-         core.command({
-            name: name,
-            execute: (...args) => run(...args),
-            tabComplete: (player, ...args) => tab(player, args.length, ...args) || []
-         });
-         return that;
-      }
-   };
-};
-
-export const event = (_, $) => {
-   return {
-      on: (shortcut) => {
-         let type = undefined;
-         const suffix = `${_.pascal(shortcut)}Event`;
-         prefixes.forEach((prefix) => {
-            if (type === undefined) {
-               try {
-                  Java.type(`${prefix}.${suffix}`);
-                  type = `${prefix}.${suffix}`;
-               } catch (error) {}
-            }
-         });
-         if (type === undefined) {
-            throw 'EventError: That event does not exist!';
-         } else {
-            const steps = [];
-            const that = {
-               if: (condition) => {
-                  steps.push({ type: 'condition', item: condition });
-                  return that;
-               },
-               do: (listener) => {
-                  steps.push({ type: 'listener', item: listener });
-                  return that;
-               }
-            };
-            core.event(type, (event) => {
-               if (event instanceof Java.type(type)) {
-                  const storage = {};
-                  const cancellable = event instanceof Cancellable;
-                  let ready = true;
-                  steps.forEach((step) => {
-                     switch (step.type) {
-                        case 'condition':
-                           switch (typeof step.item) {
-                              case 'boolean':
-                                 if (cancellable && step.item === event.isCancelled()) ready = false;
-                                 break;
-                              case 'function':
-                                 if (!step.item(event, storage)) ready = false;
-                                 break;
-                              case 'object':
-                                 if (!_.match(_.access(event), step.item)) ready = false;
-                                 break;
-                           }
-                           break;
-                        case 'listener':
-                           if (ready) {
-                              try {
-                                 step.item(event, storage);
-                              } catch (error) {
-                                 // note: do something better here
-                                 ready = false;
-                                 throw error;
-                              }
-                           }
-                           break;
-                     }
-                  });
-               }
-            });
-            return that;
-         }
-      }
-   };
-};
-
-export const prefixes = [
-   'org.bukkit.event.block',
-   'org.bukkit.event.command',
-   'org.bukkit.event.enchantment',
-   'org.bukkit.event.entity',
-   'org.bukkit.event.hanging',
-   'org.bukkit.event.inventory',
-   'org.bukkit.event.player',
-   'org.bukkit.event.raid',
-   'org.bukkit.event.server',
-   'org.bukkit.event.vehicle',
-   'org.bukkit.event.weather',
-   'org.bukkit.event.world',
-   'org.spigotmc.event.entity',
-   'org.spigotmc.event.player',
-   'com.destroystokyo.paper.event.block',
-   'com.destroystokyo.paper.event.entity',
-   'com.destroystokyo.paper.event.executor',
-   'com.destroystokyo.paper.event.player',
-   'com.destroystokyo.paper.event.profile',
-   'com.destroystokyo.paper.event.server'
-];
-
-export const utility = (_, $, jx) => {
-   return {
-      backs: (source) => {
-         return _.strain($[source], (entry) => entry.key === _.upper(entry.key));
-      },
-      data: (container, value) => {
-         const key = new NamespacedKey(core.plugin, 'jx');
-         const type = PersistentDataType.STRING;
-         if (_.def(value)) container.set(key, type, JSON.stringify(value, true));
-         else if (value === null) container.remove(key);
-         else return JSON.parse(container.get(key, type)) || {};
-      },
-      distance: (source, target, option) => {
-         _.def(source) && typeof source.location === 'function' && (source = source.location());
-         _.def(target) && typeof target.location === 'function' && (target = target.location());
-         source = $('+').instance(source);
-         target = $('+').instance(target);
-         let x = _.iterable(source) ? source[0] : source;
-         typeof x.getLocation === 'function' && (x = x.getLocation());
-         x = x instanceof Location || x instanceof Vector;
-         let y = _.iterable(target) ? target[0] : target;
-         typeof y.getLocation === 'function' && (y = y.getLocation());
-         y = y instanceof Location || y instanceof Vector;
-         if (x && y) {
-            if (_.iterable(source) && _.iterable(target)) {
-               return source.map((from) => target.map((to) => _.dist(from, to, option)));
-            } else if (_.iterable(source)) {
-               return source.map((from) => _.dist(from, target, option));
-            } else if (_.iterable(target)) {
-               return target.map((to) => _.dist(source, to, option));
-            } else {
-               return _.dist(source, target, option);
-            }
-         } else if (x) {
-            throw 'invalid-target';
-         } else if (y) {
-            throw 'invalid-source';
-         } else {
-            throw 'invalid-both';
-         }
-      },
-      drop: (source, item, option) => {
-         _.def(source) && typeof source.location === 'function' && (source = source.location());
-         source = $('+').instance(source);
-         item = $('+').instance(item);
-         let x = _.iterable(source) ? source[0] : source;
-         typeof x.getLocation === 'function' && (x = x.getLocation());
-         x = x instanceof Location;
-         let y = _.iterable(item) ? item[0] : item;
-         y = y instanceof ItemStack;
-         if (x && y) {
-            if (_.iterable(source) && _.iterable(item)) {
-               return source.map((from) => item.map((to) => _.drop(from, to, option)));
-            } else if (_.iterable(source)) {
-               return source.map((from) => _.drop(from, item, option));
-            } else if (_.iterable(item)) {
-               return item.map((to) => _.drop(source, to, option));
-            } else {
-               return _.drop(source, item, option);
-            }
-         } else if (x) {
-            throw 'invald-item';
-         } else if (y) {
-            throw 'invald-location';
-         } else {
-            throw 'invalid-both';
-         }
-      },
-      framework: () => {
-         return _;
-      },
-      fronts: (source) => {
-         return _.strain($[source], (entry) => entry.key === _.lower(entry.key));
-      },
-      instance: (thing, callback) => {
-         if (typeof thing === 'object') {
-            if (typeof thing.instance === 'function') {
-               const output = thing.instance();
-               if (typeof callback === 'function') {
-                  if (_.iterable(output)) return output.map(callback);
-                  else return callback(output);
-               } else {
-                  return output;
-               }
-            } else if (typeof thing.format === 'string') {
-               return jx[thing.format].parser(thing);
-            } else {
-               return thing;
-            }
-         } else {
-            return thing;
-         }
-      },
-      spawn: (location, entity) => {
-         location = $('+').instance(location);
-         entity = $('+').instance(entity);
-         let x = _.iterable(location) ? location[0] : location;
-         x = x instanceof Location;
-         let y = _.iterable(entity) ? entity[0] : entity;
-         y = typeof y === 'string';
-         if (x && y) {
-            if (_.iterable(location) && _.iterable(entity)) {
-               return location.map((from) => {
-                  return entity.map((to) => from.getWorld().spawnEntity(from, $.entityType[to]));
-               });
-            } else if (_.iterable(location)) {
-               return location.map((from) => from.getWorld().spawnEntity(from, $.entityType[entity]));
-            } else if (_.iterable(entity)) {
-               return entity.map((to) => location.getWorld().spawnEntity(location, $.entityType[to]));
-            } else {
-               return location.getWorld().spawnEntity(location, $.entityType[entity]);
-            }
-         } else if (x) {
-            throw 'invald-entity';
-         } else if (y) {
-            throw 'invald-location';
-         } else {
-            throw 'invalid-both';
-         }
-      }
-   };
-};
-
-export const receiver = (_, $) => {
-   return (type, input, jx) => {
-      if (_.iterable(input)) {
-         const that = jx[type].chainer(
-            [ ...input ].map((instance) => {
-               return _.def(instance) ? jx[type].wrapper(instance) : instance;
-            })
-         );
-         return Object.assign(that, {
-            [Symbol.iterator]: (...args) => input.values(...args),
-            first: () => $(_.flat([ ...input ])[0]),
-            last: () => $(_.flat([ ...input ])[input.length - 1]),
-            entry: (index) => $([ ...input ].slice(index)[0]),
-            each: (consumer) => [ ...input ].map($).map(consumer)
-         });
+/** @type {import('./tools-spec').obj} */
+export const obj = {
+   key: (object, value) => {
+      return Object.keys(object)[Object.values(object).indexOf(value)];
+   },
+   strain: (object, filter) => {
+      filter || (filter = (value) => value);
+      if (is.array(object)) {
+         return object.filter(filter);
       } else {
-         const that = jx[type].chainer([ _.def(input) ? jx[type].wrapper(input) : input ], 1);
-         const slayer = _.object(jx[type].links, (link) => ({
-            [link]: (...args) => {
-               const result = that[link](...args);
-               return result === that ? slayer : result[0];
-            }
-         }));
-         return slayer;
+         return Object.fromEntries(Object.entries(object).filter((entry, ...args) => filter(entry[1], ...args)));
       }
-   };
+   }
+};
+
+/** @type {import('./tools-spec').helper} */
+export const helper = {
+   adventure: (value) => {
+      return helper.collect(...value.map((entry) => NamespacedKey.minecraft(entry)));
+   },
+   bounds: {
+      max_health: [ 1024 ],
+      follow_range: [ 2048 ],
+      knockback_resistance: [ 1 ],
+      movement_speed: [ 1024 ],
+      attack_damage: [ 2048 ],
+      armor: [ 30 ],
+      armor_toughness: [ 20 ],
+      attack_knockback: [ 5 ],
+      attack_speed: [ 1024 ],
+      luck: [ -1024, 1024 ],
+      jump_strength: [ 2 ],
+      flying_speed: [ 1024 ],
+      spawn_reinforcements: [ 1 ]
+   },
+   bridge: (type, filter, consumer) => {
+      const output = {};
+      [ ...type.values() ].map((value) => {
+         if (typeof filter !== 'function' || filter(value)) {
+            let name;
+            if (consumer) name = consumer(value);
+            else if (typeof value.getKey === 'function') name = value.getKey().getKey();
+            else name = value.name().toLowerCase();
+            output[name] = value;
+         }
+      });
+      return output;
+   },
+   collect: (...array) => {
+      return new ArrayList({ toArray: () => array });
+   },
+   data: (host, value) => {
+      const key = new NamespacedKey(core.plugin, 'jx');
+      const type = PersistentDataType.STRING;
+      const container = host.getPersistentDataContainer();
+      switch (value) {
+         case null:
+            container.remove(key);
+            break;
+         case undefined:
+            return JSON.parse(container.get(key, type)) || {};
+         default:
+            const data = JSON.stringify(core.serialize(value, true));
+            container.set(key, type, data);
+      }
+   },
+   dist: (source, target, flat) => {
+      if (target instanceof Location) {
+         if (source.getWorld() === target.getWorld()) {
+            const deltaX = source.getX() - target.getX();
+            const deltaY = source.getY() - target.getY();
+            const deltaZ = source.getZ() - target.getZ();
+            if (flat) {
+               return Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+            } else {
+               return Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+            }
+         } else {
+            return Infinity;
+         }
+      } else if (typeof target.getLocation === 'function') {
+         return helper.dist(source.getLocation(), target, flat);
+      } else {
+         return NaN;
+      }
+   },
+   meta: (item, modifier) => {
+      const meta = item.getItemMeta();
+      if (meta) {
+         const output = modifier(meta);
+         if (output === void 0) {
+            item.setItemMeta(meta);
+         } else {
+            return output;
+         }
+      }
+   }
+};
+
+export const def = {
+   attribute: helper.bridge(Attribute, 0, (value) => value.getKey().getKey().split('.')[1]),
+   enchantment: helper.bridge(Enchantment),
+   entityType: helper.bridge(EntityType, (value) => value.name() !== 'UNKNOWN'),
+   itemFlag: helper.bridge(ItemFlag, 0, (value) => value.name().split('_')[1].toLowerCase()),
+   material: helper.bridge(Material, (value) => !value.isLegacy())
+};
+
+/** @type {import('./tools-spec').nbt} */
+export const nbt = {
+   new: () => {
+      return new NBTTagCompound();
+   },
+   parse: (data) => {
+      switch (data.type) {
+         case 'None':
+            return data.value;
+         case 'Int':
+            return NBTTagInt.a(data.value);
+         case 'Float':
+            return NBTTagFloat.a(data.value);
+         case 'Double':
+            return NBTTagDouble.a(data.value);
+         case 'Long':
+            return NBTTagLong.a(data.value);
+         case 'Short':
+            return NBTTagShort.a(data.value);
+         case 'Byte':
+            return NBTTagByte.a(data.value);
+         case 'String':
+            return NBTTagString.a(data.value);
+         case 'End':
+            return null;
+         case 'List':
+            const list = new NBTTagList();
+            data.value.forEach((entry) => list.add(nbt.parse(entry)));
+            return list;
+         case 'ByteArray':
+            const bytes = new NBTTagByteArray(helper.collect());
+            data.value.forEach((entry) => bytes.add(nbt.parse(entry)));
+            return bytes;
+         case 'IntArray':
+            const ints = new NBTTagIntArray(helper.collect());
+            data.value.forEach((entry) => ints.add(nbt.parse(entry)));
+            return ints;
+         case 'Compound':
+            const compound = new NBTTagCompound();
+            Object.entries(data.value).forEach((entry) => compound.set(entry[0], nbt.parse(entry[1])));
+            return compound;
+      }
+   },
+   serialize: (data) => {
+      if ([ null, undefined ].includes(data)) {
+         return { type: 'None', value: data };
+      } else {
+         let value = undefined;
+         const type = data.getClass().getCanonicalName().split('NBTTag')[1];
+         switch (type) {
+            case 'Int':
+               value = data.asInt();
+               break;
+            case 'Float':
+               value = data.asFloat();
+               break;
+            case 'Double':
+               value = data.asDouble();
+               break;
+            case 'Long':
+               value = data.asLong();
+               break;
+            case 'Short':
+               value = data.asShort();
+               break;
+            case 'Byte':
+               value = data.asByte();
+               break;
+            case 'String':
+               value = data.asString();
+               break;
+            case 'End':
+               value = null;
+               break;
+            case 'List':
+            case 'ByteArray':
+            case 'IntArray':
+               value = [ ...data ].map(nbt.serialize);
+               break;
+            case 'Compound':
+               value = Object.fromEntries(
+                  [ ...data.map.entrySet() ].map((entry) => {
+                     return [ entry.getKey(), nbt.serialize(entry.getValue()) ];
+                  })
+               );
+               break;
+         }
+         return { type: type, value: value };
+      }
+   }
 };
