@@ -1,5 +1,5 @@
 import * as accessors from './accessors';
-import * as wrappers from './wrappers';
+import * as wrappers from './wraps';
 
 type Callback = (link: Wrapper<any>, output: any[]) => any;
 
@@ -54,7 +54,6 @@ export class Wrapper<X> {
    valid: X;
    properties: Properties<X>;
    entries: Entries<X>;
-   static add (addons: { [x: string]: Wrapper<any> }): void;
    static processor (callback: Callback): typeof Processor;
    constructor (valid: X, properties: Properties<X>);
    chainer (thing: X): any;

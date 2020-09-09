@@ -1,8 +1,20 @@
+////////////////////////////////////////////////////////////////////////////
+//                                                                        //
+//  ####  ########  ######    ########  ##    ##            ##  ########  //
+//   ##   ##    ##  ##    ##  ##         ##  ##             ##  ##        //
+//   ##   ##    ##  ##    ##  ##          ####              ##  ##        //
+//   ##   ##    ##  ##    ##  #######      ##               ##  ########  //
+//   ##   ##    ##  ##    ##  ##          ####              ##        ##  //
+//   ##   ##    ##  ##    ##  ##         ##  ##       ##    ##        ##  //
+//  ####  ##    ##  ######    ########  ##    ##  ##  ########  ########  //
+//                                                                        //
+////////////////////////////////////////////////////////////////////////////
+
 /** @type {import('./library/engine')} */
 const { Registry, is } = core.import('./library/engine.js');
 
-/** @type {import('./library/wrappers')} */
-const wrappers = core.import('./library/wrappers.js');
+/** @type {import('./library/wraps')} */
+const wrappers = core.import('./library/wraps.js');
 
 Registry.register('bar', wrappers.bar);
 Registry.register('block', wrappers.block);
