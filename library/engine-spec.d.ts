@@ -1,4 +1,4 @@
-import * as accessors from './accessors';
+import { accessors } from './engine';
 import * as wrappers from './wraps';
 
 type Callback = (link: Wrapper<any>, output: any[]) => any;
@@ -56,6 +56,7 @@ export class Wrapper<X> {
    entries: Entries<X>;
    static processor (callback: Callback): typeof Processor;
    constructor (valid: X, properties: Properties<X>);
+   assert<Y> (object: any, callback: (thing: X) => Y): Y;
    chainer (thing: X): any;
    chainerNest (things: X[]): any;
    extend<Y> (valid: Y, properties: Properties<Y>): Wrapper<Y>;

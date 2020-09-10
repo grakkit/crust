@@ -13,14 +13,17 @@
 /** @type {import('./types')} */
 const {
    // helper
+   NamespacedKey,
    PersistentDataType,
 
    // def
    Attribute,
    Enchantment,
    EntityType,
+   EquipmentSlot,
    ItemFlag,
    Material,
+   PotionEffectType,
 
    // nbt
    NBTTagByte,
@@ -33,8 +36,7 @@ const {
    NBTTagList,
    NBTTagLong,
    NBTTagShort,
-   NBTTagString,
-   NamespacedKey
+   NBTTagString
 } = core.import('./types.js');
 
 /** @type {import('./tools-spec').num} */
@@ -141,6 +143,14 @@ export const helper = {
             return output;
          }
       }
+   },
+   slots: {
+      chest: 'chestplate',
+      feet: 'boots',
+      hand: 'itemInMainHand',
+      head: 'helmet',
+      legs: 'leggings',
+      off_hand: 'itemInOffHand'
    }
 };
 
@@ -148,8 +158,10 @@ export const def = {
    attribute: helper.bridge(Attribute, 0, (value) => value.getKey().getKey().split('.')[1]),
    enchantment: helper.bridge(Enchantment),
    entityType: helper.bridge(EntityType, (value) => value.name() !== 'UNKNOWN'),
+   equipmentSlot: helper.bridge(EquipmentSlot),
    itemFlag: helper.bridge(ItemFlag, 0, (value) => value.name().split('_')[1].toLowerCase()),
-   material: helper.bridge(Material, (value) => !value.isLegacy())
+   material: helper.bridge(Material, (value) => !value.isLegacy()),
+   peType: helper.bridge(PotionEffectType, 0, (value) => value.getHandle().c().split('.')[2])
 };
 
 /** @type {import('./tools-spec').nbt} */

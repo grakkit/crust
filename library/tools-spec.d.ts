@@ -41,7 +41,11 @@ export interface helper {
    bounds: {
       [x: string]: number[];
    };
-   bridge(type: any, filter?: (value: any) => any, consumer?: (value: any) => string): any;
+   bridge<X>(
+      type: X,
+      filter?: (value: any) => any,
+      consumer?: (value: any) => string
+   ): { [x: string]: InstanceType<X> };
    collect(...array: any[]): ArrayList;
    data(host: PersistentDataHolder): any;
    data(host: PersistentDataHolder, value: any): void;

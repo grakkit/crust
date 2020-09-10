@@ -58,7 +58,7 @@ export const Accessor = class {
    }
 };
 
-const accessors = {
+export const accessors = {
    runner: new Accessor((args, property) => {
       return property.run(args);
    }),
@@ -149,6 +149,15 @@ export const Wrapper = class {
             link: entry[1].link
          };
       });
+   }
+   assert (object, callback) {
+      if (object instanceof this.valid) {
+         return callback(object);
+      } else if (is.array(object)) {
+         return [ ...object ].map((value) => this.assert(value, callback));
+      } else if (thing instanceof Chainer || thing instanceof ChainerNest) {
+         return this.assert(thing.instance(), callback);
+      }
    }
    chainer (thing) {
       return new Chainer(this.entries, thing);

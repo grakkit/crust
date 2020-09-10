@@ -86,9 +86,9 @@ export const entity = positional.extend(EntityInstance, {
       get () {
          return Object.fromEntries(
             Object.entries(def.attribute).map((entry) => {
-               const instance = this.getAttribute(entry[1]);
-               if (instance) {
-                  return [ entry[0], instance.getBaseValue() ];
+               const inst = this.getAttribute(entry[1]);
+               if (inst) {
+                  return [ entry[0], inst.getBaseValue() ];
                } else {
                   return [ entry[0], null ];
                }
@@ -98,10 +98,10 @@ export const entity = positional.extend(EntityInstance, {
       set (value) {
          value || (value = {});
          for (const [ key, attrib ] of Object.entries(def.attribute)) {
-            const instance = this.getAttribute(attrib);
-            if (instance) {
-               const entry = value[key] || instance.getDefaultValue();
-               instance.setBaseValue(num.clamp(entry, ...helper.bounds[key]));
+            const inst = this.getAttribute(attrib);
+            if (inst) {
+               const entry = value[key] || inst.getDefaultValue();
+               inst.setBaseValue(num.clamp(entry, ...helper.bounds[key]));
             }
          }
       }
@@ -131,6 +131,51 @@ export const entity = positional.extend(EntityInstance, {
       },
       set (value) {
          helper.data(this, value);
+      }
+   },
+   effect: {
+      type: 'merger',
+      policy: '~{~[number]}',
+      get () {
+         return Object.fromEntries(
+            Object.entries(def.peType).map(([ key, value ]) => {
+               const inst = this.getPotionEffect(value);
+               if (inst) {
+                  return [ key, [ inst.getDuration(), inst.getAmplifier() + 1 ] ];
+               } else {
+                  return [ key, null ];
+               }
+            })
+         );
+      },
+      set (value) {
+         value || (value = {});
+         for (const [ key, type ] of Object.entries(def.peType)) {
+            if (value[key] && value[key][0] > 0 && value[key][1] > 0) {
+               this.addPotionEffect(type.createEffect(value[key][0], value[key][1] - 1));
+            } else {
+               this.removePotionEffect(type);
+            }
+         }
+      }
+   },
+   equipment: {
+      type: 'merger',
+      policy: '~object',
+      get () {
+         return Object.fromEntries(
+            Object.keys(def.equipmentSlot).map((key) => {
+               return [ key, this.getEquipment()[`get${helper.equipment[key]}`] ];
+            })
+         );
+      },
+      set (value) {
+         value || (value = {});
+         for (const key in def.equipmentSlot) {
+            item.assert(value[key], (item) => {
+               this.getEquipment()[`set${helper.equipment[key]}`](item);
+            });
+         }
       }
    },
    health: {
@@ -199,11 +244,7 @@ export const entity = positional.extend(EntityInstance, {
    remove: {
       type: 'runner',
       run () {
-         if (this instanceof Player) {
-            this.kickPlayer('');
-         } else {
-            this.remove();
-         }
+         this.remove();
       }
    },
    silent: {
@@ -238,6 +279,23 @@ export const entity = positional.extend(EntityInstance, {
       type: 'getter',
       get () {
          return obj.key(def.entityType, this.getType());
+      }
+   },
+   uuid: {
+      type: 'getter',
+      get () {
+         return this.getUniqueId().toString();
+      }
+   },
+   velocity: {
+      type: 'setter',
+      link: 'vector',
+      policy: 'object',
+      get () {
+         return this.getVelocity();
+      },
+      set (value) {
+         this.setVelocity(vector.assert(value) || new Vector(0, 0, 0));
       }
    }
 });
